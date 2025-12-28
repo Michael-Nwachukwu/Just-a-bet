@@ -65,6 +65,7 @@ contract Bet is ReentrancyGuard {
     IERC20 public immutable usdc;
     BetYieldVault public immutable yieldVault;
     UsernameRegistry public immutable usernameRegistry;
+    address public disputeManager; // Set by factory after deployment
 
     bool public creatorFunded;
     bool public opponentFunded;
@@ -283,11 +284,21 @@ contract Bet is ReentrancyGuard {
      * @param _outcome Outcome determined by judges
      */
     function resolveByJudges(Outcome _outcome) external nonReentrant {
-        // In full implementation, only DisputeManager can call this
-        // For MVP, we'll allow owner/participants to resolve disputed bets
+        // Only DisputeManager can resolve disputed bets
+        if (msg.sender != disputeManager && disputeManager != address(0)) revert Unauthorized();
         if (betDetails.state != BetState.Disputed) revert InvalidState();
 
         _resolveBet(_outcome);
+    }
+
+    /**
+     * @notice Set dispute manager address (called once by factory)
+     * @param _disputeManager Address of DisputeManager contract
+     */
+    function setDisputeManager(address _disputeManager) external {
+        require(disputeManager == address(0), "Already set");
+        require(_disputeManager != address(0), "Invalid address");
+        disputeManager = _disputeManager;
     }
 
     /**
