@@ -14,9 +14,9 @@ contract UsernameRegistry is Ownable, ReentrancyGuard {
 
     struct UserProfile {
         string username;
-        bytes32 ensNode;        // ENS node hash (if linked)
         string ensName;         // Human-readable ENS name
-        uint256 registeredAt;
+        bytes32 ensNode;        // ENS node hash (if linked)
+        uint96 registeredAt;    // Timestamp (uint96 is sufficient until year 2500+)
         bool isActive;
     }
 
@@ -85,9 +85,9 @@ contract UsernameRegistry is Ownable, ReentrancyGuard {
 
         profiles[msg.sender] = UserProfile({
             username: _username,
-            ensNode: bytes32(0),
             ensName: "",
-            registeredAt: block.timestamp,
+            ensNode: bytes32(0),
+            registeredAt: uint96(block.timestamp),
             isActive: true
         });
 
@@ -135,15 +135,26 @@ contract UsernameRegistry is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Deactivate user account (can be reactivated by registering again)
+     * @notice Deactivate user account
+     * @dev Deletes username mapping to prevent squatting.
+     *      User can re-register with a different username.
      */
     function deactivateAccount() external nonReentrant {
         if (!profiles[msg.sender].isActive) revert NoUsernameRegistered();
 
         string memory username = profiles[msg.sender].username;
-        profiles[msg.sender].isActive = false;
 
-        // Don't delete username mapping to prevent reuse immediately
+        // Clear username mapping to prevent squatting
+        delete usernameToAddress[username];
+
+        // Clear ENS mapping if exists
+        if (profiles[msg.sender].ensNode != bytes32(0)) {
+            delete ensNodeToAddress[profiles[msg.sender].ensNode];
+        }
+
+        // Mark profile as inactive
+        profiles[msg.sender].isActive = false;
+        totalUsers--;
 
         emit UserDeactivated(msg.sender, username, block.timestamp);
     }

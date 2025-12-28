@@ -139,6 +139,9 @@ contract Bet is ReentrancyGuard {
         require(_stakeAmount > 0, "Invalid stake");
         require(_duration >= 1 hours && _duration <= 365 days, "Invalid duration");
         require(bytes(_description).length > 0, "Empty description");
+        require(_usdc != address(0), "Invalid USDC address");
+        require(_yieldVault != address(0), "Invalid vault address");
+        require(_usernameRegistry != address(0), "Invalid registry address");
 
         usdc = IERC20(_usdc);
         yieldVault = BetYieldVault(_yieldVault);
@@ -218,22 +221,27 @@ contract Bet is ReentrancyGuard {
     /**
      * @notice Declare outcome (optimistic resolution)
      * @param _outcome The declared outcome
+     * @dev Winner declares the outcome. Loser has 24h to dispute if they disagree.
+     *      This is the correct optimistic resolution model.
      */
     function declareOutcome(Outcome _outcome) external onlyParticipant nonReentrant {
         if (betDetails.state != BetState.Active) revert InvalidState();
         if (block.timestamp < betDetails.expiresAt) revert BetNotExpired();
         if (_outcome == Outcome.None) revert InvalidState();
 
-        // Determine winner
+        // Determine winner and validate declarer
         address winner;
         if (_outcome == Outcome.CreatorWins) {
             winner = betDetails.creator;
-            if (msg.sender == betDetails.creator) revert CannotDeclareAsWinner();
+            // Only the creator (winner) can declare they won
+            if (msg.sender != betDetails.creator) revert Unauthorized();
         } else if (_outcome == Outcome.OpponentWins) {
             winner = betDetails.opponent;
-            if (msg.sender == betDetails.opponent) revert CannotDeclareAsWinner();
+            // Only the opponent (winner) can declare they won
+            if (msg.sender != betDetails.opponent) revert Unauthorized();
         } else {
-            winner = address(0); // Draw
+            // Draw can be declared by either party
+            winner = address(0);
         }
 
         betDetails.state = BetState.AwaitingResolution;
@@ -335,16 +343,17 @@ contract Bet is ReentrancyGuard {
         }
 
         // Withdraw from vault (principal + yield - platform fee)
+        address recipient = winner != address(0) ? winner : address(this); // Send to contract if draw
         (uint256 totalAmount, uint256 yieldEarned) = yieldVault.withdrawForBet(
             address(this),
-            winner != address(0) ? winner : betDetails.creator // Send to creator if draw
+            recipient
         );
 
-        // If draw, split funds
+        // If draw, split funds between both participants
         if (_outcome == Outcome.Draw) {
             uint256 halfAmount = totalAmount / 2;
-            // Funds already sent to creator from vault, now send half to opponent
-            usdc.safeTransferFrom(betDetails.creator, betDetails.opponent, halfAmount);
+            usdc.safeTransfer(betDetails.creator, halfAmount);
+            usdc.safeTransfer(betDetails.opponent, totalAmount - halfAmount); // Handle rounding
         }
 
         emit BetResolved(_outcome, winner, totalAmount, yieldEarned, block.timestamp);

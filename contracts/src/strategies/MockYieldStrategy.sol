@@ -29,7 +29,8 @@ contract MockYieldStrategy is IYieldStrategy, Ownable, ReentrancyGuard {
     struct Deposit {
         uint256 amount;          // Principal deposited (USDC)
         uint256 shares;          // Shares issued
-        uint256 depositTime;     // Timestamp of deposit
+        uint256 depositTime;     // Weighted average deposit time
+        uint256 totalDeposited;  // Track total deposited for weighted average
     }
 
     mapping(address => Deposit) public deposits;
@@ -70,11 +71,23 @@ contract MockYieldStrategy is IYieldStrategy, Ownable, ReentrancyGuard {
         // For simplicity, shares = amount (1:1 ratio)
         shares = amount;
 
-        deposits[msg.sender] = Deposit({
-            amount: deposits[msg.sender].amount + amount,
-            shares: deposits[msg.sender].shares + shares,
-            depositTime: block.timestamp
-        });
+        Deposit storage userDeposit = deposits[msg.sender];
+
+        // Calculate weighted average deposit time to preserve yield history
+        uint256 oldAmount = userDeposit.amount;
+        uint256 newTotalAmount = oldAmount + amount;
+
+        if (oldAmount > 0) {
+            // Weighted average: (oldAmount * oldTime + newAmount * newTime) / totalAmount
+            userDeposit.depositTime = (oldAmount * userDeposit.depositTime + amount * block.timestamp) / newTotalAmount;
+        } else {
+            // First deposit
+            userDeposit.depositTime = block.timestamp;
+        }
+
+        userDeposit.amount = newTotalAmount;
+        userDeposit.shares += shares;
+        userDeposit.totalDeposited += amount;
 
         totalDeposited += amount;
         totalSharesIssued += shares;
@@ -103,6 +116,14 @@ contract MockYieldStrategy is IYieldStrategy, Ownable, ReentrancyGuard {
         // Total amount to return
         amount = principal + yieldEarned;
 
+        // Safety check: ensure contract has enough USDC to pay out
+        uint256 contractBalance = usdc.balanceOf(address(this));
+        if (contractBalance < amount) {
+            // Cap yield to available balance
+            amount = contractBalance;
+            yieldEarned = amount > principal ? amount - principal : 0;
+        }
+
         // Update state
         userDeposit.amount -= principal;
         userDeposit.shares -= shares;
@@ -112,6 +133,7 @@ contract MockYieldStrategy is IYieldStrategy, Ownable, ReentrancyGuard {
         // If fully withdrawn, reset deposit time
         if (userDeposit.shares == 0) {
             userDeposit.depositTime = 0;
+            userDeposit.totalDeposited = 0;
         }
 
         // Transfer USDC (including simulated yield from contract balance)
