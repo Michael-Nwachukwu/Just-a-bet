@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./Bet.sol";
 import "./UsernameRegistry.sol";
+import "../liquidity/CDOPool.sol";
+import "../liquidity/BetRiskValidator.sol";
 
 /**
  * @title BetFactory
@@ -20,8 +22,20 @@ contract BetFactory is Ownable, ReentrancyGuard {
     address public yieldVault;
     UsernameRegistry public immutable usernameRegistry;
 
+    // House (CDO Pool) integration
+    CDOPool public cdoPool;
+    BetRiskValidator public riskValidator;
+
+    // Special identifier for house opponent
+    string public constant HOUSE_IDENTIFIER = "HOUSE";
+    address public constant HOUSE_ADDRESS = address(0x486F757365); // "House" in hex
+
     mapping(address => address[]) public userBets;  // user => their bets
     address[] public allBets;
+
+    // Track house-matched bets
+    mapping(address => bool) public isHouseBet;  // bet => is matched with house
+    address[] public houseBets;
 
     struct ProtocolConfig {
         uint256 minStakeAmount;          // Minimum USDC stake (6 decimals)
@@ -47,8 +61,32 @@ contract BetFactory is Ownable, ReentrancyGuard {
         uint256 timestamp
     );
 
+    event HouseBetCreated(
+        address indexed betContract,
+        address indexed creator,
+        uint256 stakeAmount,
+        uint256 duration,
+        string description,
+        bytes32 indexed betId,
+        uint256 timestamp
+    );
+
+    event HouseBetMatched(
+        address indexed betContract,
+        uint256 poolAmount,
+        uint256 timestamp
+    );
+
+    event HouseBetRejected(
+        address indexed betContract,
+        string reason,
+        uint256 timestamp
+    );
+
     event ConfigUpdated(string parameter, uint256 newValue, uint256 timestamp);
     event YieldVaultUpdated(address oldVault, address newVault, uint256 timestamp);
+    event CDOPoolUpdated(address oldPool, address newPool, uint256 timestamp);
+    event RiskValidatorUpdated(address oldValidator, address newValidator, uint256 timestamp);
     event ProtocolPaused(bool paused, uint256 timestamp);
 
     // ============ Errors ============
@@ -58,6 +96,10 @@ contract BetFactory is Ownable, ReentrancyGuard {
     error InvalidStakeAmount();
     error InvalidDuration();
     error YieldVaultNotSet();
+    error CDOPoolNotSet();
+    error RiskValidatorNotSet();
+    error HouseBetRejectedByRiskValidator(string reason);
+    error InsufficientPoolLiquidity();
 
     // ============ Constructor ============
 
@@ -102,7 +144,7 @@ contract BetFactory is Ownable, ReentrancyGuard {
 
     /**
      * @notice Create a new bet
-     * @param opponentIdentifier Username, ENS, or address of opponent
+     * @param opponentIdentifier Username, ENS, address of opponent, or "HOUSE" for pool matching
      * @param stakeAmount Amount of USDC to stake (6 decimals)
      * @param description Bet description
      * @param outcomeDescription How to determine outcome
@@ -137,37 +179,52 @@ contract BetFactory is Ownable, ReentrancyGuard {
             revert("Max total bets reached");
         }
 
-        // Resolve opponent address
-        address opponent = usernameRegistry.resolveIdentifier(opponentIdentifier);
-        if (opponent == address(0) || opponent == msg.sender) revert InvalidOpponent();
+        // Check if opponent is "HOUSE"
+        bool isHouse = _isStringEqual(opponentIdentifier, HOUSE_IDENTIFIER);
 
-        // Create bet using minimal proxy (EIP-1167)
-        betContract = _deployBet(
-            msg.sender,
-            opponent,
-            stakeAmount,
-            description,
-            outcomeDescription,
-            duration,
-            tags
-        );
+        if (isHouse) {
+            // Create house bet with AI validation
+            return _createHouseBet(
+                stakeAmount,
+                description,
+                outcomeDescription,
+                duration,
+                tags
+            );
+        } else {
+            // Regular P2P bet
+            // Resolve opponent address
+            address opponent = usernameRegistry.resolveIdentifier(opponentIdentifier);
+            if (opponent == address(0) || opponent == msg.sender) revert InvalidOpponent();
 
-        // Track bet
-        userBets[msg.sender].push(betContract);
-        userBets[opponent].push(betContract);
-        allBets.push(betContract);
+            // Create bet using minimal proxy (EIP-1167)
+            betContract = _deployBet(
+                msg.sender,
+                opponent,
+                stakeAmount,
+                description,
+                outcomeDescription,
+                duration,
+                tags
+            );
 
-        emit BetCreated(
-            betContract,
-            msg.sender,
-            opponent,
-            stakeAmount,
-            duration,
-            description,
-            block.timestamp
-        );
+            // Track bet
+            userBets[msg.sender].push(betContract);
+            userBets[opponent].push(betContract);
+            allBets.push(betContract);
 
-        return betContract;
+            emit BetCreated(
+                betContract,
+                msg.sender,
+                opponent,
+                stakeAmount,
+                duration,
+                description,
+                block.timestamp
+            );
+
+            return betContract;
+        }
     }
 
     /**
@@ -274,5 +331,159 @@ contract BetFactory is Ownable, ReentrancyGuard {
         );
 
         return address(bet);
+    }
+
+    /**
+     * @dev Create a house bet with risk validation
+     * @dev AI validation happens on frontend for UX, on-chain validation for security
+     */
+    function _createHouseBet(
+        uint256 stakeAmount,
+        string calldata description,
+        string calldata outcomeDescription,
+        uint256 duration,
+        string[] calldata tags
+    ) internal returns (address betContract) {
+        // Validate house bet requirements
+        if (address(cdoPool) == address(0)) revert CDOPoolNotSet();
+        if (address(riskValidator) == address(0)) revert RiskValidatorNotSet();
+
+        // Create bet with HOUSE_ADDRESS as opponent
+        betContract = _deployBet(
+            msg.sender,
+            HOUSE_ADDRESS,
+            stakeAmount,
+            description,
+            outcomeDescription,
+            duration,
+            tags
+        );
+
+        // Validate and match with pool (BetRiskValidator enforces security)
+        _validateAndMatchHouseBet(betContract, stakeAmount);
+
+        // Track house bet
+        bytes32 betId = keccak256(abi.encodePacked(
+            msg.sender,
+            stakeAmount,
+            description,
+            block.timestamp,
+            allBets.length
+        ));
+        _trackHouseBet(betContract, stakeAmount, duration, description, betId);
+
+        return betContract;
+    }
+
+
+    /**
+     * @dev Validate bet and match with pool
+     */
+    function _validateAndMatchHouseBet(address betContract, uint256 stakeAmount) internal {
+        uint256 availableLiquidity = cdoPool.getAvailableLiquidity();
+
+        // Check pool has sufficient liquidity first
+        if (stakeAmount > availableLiquidity) {
+            emit HouseBetRejected(betContract, "Insufficient pool liquidity", block.timestamp);
+            revert InsufficientPoolLiquidity();
+        }
+
+        // Validate bet with risk validator
+        (bool isValid, string memory reason) = riskValidator.validateBetForMatching(
+            betContract,
+            availableLiquidity,
+            cdoPool.getUtilizationRate()
+        );
+
+        if (!isValid) {
+            emit HouseBetRejected(betContract, reason, block.timestamp);
+            revert HouseBetRejectedByRiskValidator(reason);
+        }
+
+        // Match with pool immediately
+        cdoPool.matchBet(betContract, stakeAmount);
+    }
+
+    /**
+     * @dev Track house bet in mappings and emit events
+     */
+    function _trackHouseBet(
+        address betContract,
+        uint256 stakeAmount,
+        uint256 duration,
+        string calldata description,
+        bytes32 betId
+    ) internal {
+        // Mark as house bet
+        isHouseBet[betContract] = true;
+        houseBets.push(betContract);
+
+        // Track bet
+        userBets[msg.sender].push(betContract);
+        allBets.push(betContract);
+
+        emit HouseBetCreated(
+            betContract,
+            msg.sender,
+            stakeAmount,
+            duration,
+            description,
+            betId,
+            block.timestamp
+        );
+
+        emit HouseBetMatched(betContract, stakeAmount, block.timestamp);
+    }
+
+    /**
+     * @dev Compare two strings for equality
+     */
+    function _isStringEqual(string calldata a, string memory b) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    // ============ Owner Functions - House Integration ============
+
+    /**
+     * @notice Set CDO Pool address
+     */
+    function setCDOPool(address _cdoPool) external onlyOwner {
+        require(_cdoPool != address(0), "Invalid pool");
+        address oldPool = address(cdoPool);
+        cdoPool = CDOPool(_cdoPool);
+        emit CDOPoolUpdated(oldPool, _cdoPool, block.timestamp);
+    }
+
+    /**
+     * @notice Set Risk Validator address
+     */
+    function setRiskValidator(address _riskValidator) external onlyOwner {
+        require(_riskValidator != address(0), "Invalid validator");
+        address oldValidator = address(riskValidator);
+        riskValidator = BetRiskValidator(_riskValidator);
+        emit RiskValidatorUpdated(oldValidator, _riskValidator, block.timestamp);
+    }
+
+    // ============ View Functions - House Bets ============
+
+    /**
+     * @notice Get all house bets
+     */
+    function getHouseBets() external view returns (address[] memory) {
+        return houseBets;
+    }
+
+    /**
+     * @notice Check if a bet is matched with house
+     */
+    function isHouseMatch(address betContract) external view returns (bool) {
+        return isHouseBet[betContract];
+    }
+
+    /**
+     * @notice Get house bets count
+     */
+    function getHouseBetsCount() external view returns (uint256) {
+        return houseBets.length;
     }
 }
