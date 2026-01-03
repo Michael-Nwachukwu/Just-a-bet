@@ -155,9 +155,8 @@ contract CDOPoolTest is Test {
 
         // Check balances
         assertEq(usdc.balanceOf(alice), INITIAL_BALANCE - depositAmount);
-        // USDC is deposited to YieldVault immediately, not held in pool
-        assertEq(usdc.balanceOf(address(pool)), 0);
-        assertEq(usdc.balanceOf(address(yieldVault)), depositAmount);
+        // USDC is held in pool contract (CDOPool manages its own liquidity)
+        assertEq(usdc.balanceOf(address(pool)), depositAmount);
         assertEq(cdoToken.balanceOf(alice), shares);
 
         // Check stats
@@ -462,11 +461,10 @@ contract CDOPoolTest is Test {
         uint256 pendingYield = pool.calculatePendingYield(alice, 0);
 
         // Should have yield from bet profit
-        // NOTE: Yield is calculated based on share of total pool value increase
-        // With immediate YieldVault deposits, accounting may differ from expected
+        // Pool matched 1000 USDC, won 2000 USDC back, so profit = 1000 USDC
+        // Alice owns 100% of the pool, so she gets 100% of the profit
         assertGt(pendingYield, 0);
-        // Expecting approximately 500 USDC yield (half of 2x return due to accounting)
-        assertApproxEqAbs(pendingYield, 500 * 10**USDC_DECIMALS, 10 * 10**USDC_DECIMALS);
+        assertApproxEqAbs(pendingYield, 1000 * 10**USDC_DECIMALS, 10 * 10**USDC_DECIMALS);
     }
 
     function test_YieldCalculation_MultipleUsers() public {
@@ -494,9 +492,9 @@ contract CDOPoolTest is Test {
         uint256 aliceYield = pool.calculatePendingYield(alice, 0);
         uint256 bobYield = pool.calculatePendingYield(bob, 0);
 
-        // Each gets ~250 USDC (half of 500 total yield, accounting for YieldVault)
-        assertApproxEqAbs(aliceYield, 250 * 10**USDC_DECIMALS, 10 * 10**USDC_DECIMALS);
-        assertApproxEqAbs(bobYield, 250 * 10**USDC_DECIMALS, 10 * 10**USDC_DECIMALS);
+        // Total profit = 1000 USDC, each user owns 50% of pool, so each gets 500 USDC
+        assertApproxEqAbs(aliceYield, 500 * 10**USDC_DECIMALS, 10 * 10**USDC_DECIMALS);
+        assertApproxEqAbs(bobYield, 500 * 10**USDC_DECIMALS, 10 * 10**USDC_DECIMALS);
     }
 
     // ============ Bet Matching Tests ============

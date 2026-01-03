@@ -219,12 +219,10 @@ contract CDOPool is Ownable, ReentrancyGuard {
         if (tier > 3) revert InvalidTier();
         if (stats.totalDeposits + amount > config.maxPoolSize) revert PoolCapReached();
 
-        // Transfer USDC from user
+        // Transfer USDC from user directly to this contract
+        // Note: CDOPool manages its own liquidity, doesn't use YieldVault
+        // (YieldVault is designed for individual bet contracts, not liquidity pools)
         usdc.safeTransferFrom(msg.sender, address(this), amount);
-
-        // Immediately deposit to YieldVault to start earning yield
-        usdc.approve(address(yieldVault), amount);
-        yieldVault.depositForBet(address(this), amount);
 
         // Calculate shares (1:1 ratio for simplicity, could use total supply formula)
         shares = _calculateShares(amount);
@@ -321,9 +319,13 @@ contract CDOPool is Ownable, ReentrancyGuard {
         // Burn CDO tokens
         cdoToken.burn(msg.sender, shares);
 
-        // Withdraw from YieldVault and transfer to user
-        // Note: YieldVault withdraws directly to the recipient
-        yieldVault.withdrawForBet(address(this), msg.sender);
+        // Transfer USDC to user (accounting for penalty)
+        // Note: We don't withdraw from YieldVault here because the pool manages
+        // its total balance in YieldVault. Only transfer what the user is owed.
+        usdc.safeTransfer(msg.sender, totalAmount);
+
+        // If there was a penalty, it stays in the pool for other LPs
+        // (poolBalance was already reduced by totalAmount, not principal)
 
         emit Withdrawn(
             msg.sender,
@@ -398,8 +400,8 @@ contract CDOPool is Ownable, ReentrancyGuard {
         }
 
         if (totalAmount > 0) {
-            // Withdraw from YieldVault
-            yieldVault.withdrawForBet(address(this), msg.sender);
+            // Transfer USDC to user
+            usdc.safeTransfer(msg.sender, totalAmount);
         }
 
         return (totalAmount, totalYield);
@@ -473,12 +475,21 @@ contract CDOPool is Ownable, ReentrancyGuard {
 
         // Calculate profit/loss
         uint256 profit = 0;
-        if (finalAmount > matchedAmount) {
+
+        if (won && finalAmount > matchedAmount) {
+            // Pool won - we get back more than we bet
             profit = finalAmount - matchedAmount;
-            stats.poolBalance += finalAmount;
+
+            // Funds should already be in this contract (transferred before calling settleBet)
+            // Update pool balance: add the profit (our matchedAmount was already counted, only add profit)
+            stats.poolBalance += profit;
         } else {
-            // Loss scenario
-            stats.poolBalance += finalAmount;
+            // Pool lost - we lost some or all of our matched amount
+            uint256 loss = matchedAmount - finalAmount;
+
+            // Funds already in contract if any were returned
+            // Update pool balance: subtract the loss
+            stats.poolBalance -= loss;
         }
 
         // Update state
@@ -623,7 +634,8 @@ contract CDOPool is Ownable, ReentrancyGuard {
         if (position.shares == 0) return 0;
 
         // Calculate current value based on shares
-        uint256 totalPoolValue = stats.poolBalance + stats.activeMatchedAmount;
+        // Note: poolBalance already includes activeMatchedAmount (funds never leave pool)
+        uint256 totalPoolValue = stats.poolBalance;
         if (stats.totalShares == 0) return 0;
 
         uint256 userValue = (position.shares * totalPoolValue) / stats.totalShares;
@@ -666,7 +678,8 @@ contract CDOPool is Ownable, ReentrancyGuard {
      */
     function getUserTotalValue(address user) external view returns (uint256 totalValue) {
         uint256 positionCount = userPositions[user].length;
-        uint256 totalPoolValue = stats.poolBalance + stats.activeMatchedAmount;
+        // Note: poolBalance already includes activeMatchedAmount (funds never leave pool)
+        uint256 totalPoolValue = stats.poolBalance;
 
         if (stats.totalShares == 0) return 0;
 
