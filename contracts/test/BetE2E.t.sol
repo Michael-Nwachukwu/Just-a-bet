@@ -41,7 +41,7 @@ contract BetE2ETest is Test {
         usdc = new MockUSDC();
         registry = new UsernameRegistry();
         yieldStrategy = new MockYieldStrategy(address(usdc));
-        yieldVault = new BetYieldVault(address(usdc), platformFeeReceiver);
+        yieldVault = new BetYieldVault(address(usdc), platformFeeReceiver, address(yieldStrategy));
         betFactory = new BetFactory(address(usdc), address(registry));
 
         // Configure vault with yield strategy

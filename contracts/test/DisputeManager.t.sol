@@ -51,8 +51,10 @@ contract DisputeManagerTest is Test {
     event DisputeCreated(
         uint256 indexed disputeId,
         address indexed betContract,
-        uint8 tier,
+        address indexed initiator,
+        DisputeManager.DisputeTier tier,
         uint8 judgeCount,
+        uint256 deadline,
         uint256 timestamp
     );
     event VoteSubmitted(
@@ -68,9 +70,9 @@ contract DisputeManagerTest is Test {
         uint256 timestamp
     );
     event DisputeAppealed(
-        uint256 indexed oldDisputeId,
+        uint256 indexed disputeId,
         uint256 indexed newDisputeId,
-        uint8 newTier,
+        DisputeManager.DisputeTier newTier,
         uint256 timestamp
     );
 
@@ -88,6 +90,9 @@ contract DisputeManagerTest is Test {
 
         // Set treasury
         judgeRegistry.setTreasury(treasury);
+
+        // Transfer JudgeRegistry ownership to DisputeManager (so it can update judge stats)
+        judgeRegistry.transferOwnership(address(disputeManager));
 
         // Fund test accounts with MNT for judge stakes
         vm.deal(judge1, 100 ether);
@@ -172,9 +177,18 @@ contract DisputeManagerTest is Test {
         vm.prank(opponent);
         testBet.raiseDispute();
 
-        // Create dispute (Tier 1 - stake < 1000 USDC)
-        vm.expectEmit(true, true, false, true);
-        emit DisputeCreated(1, address(testBet), 1, 1, block.timestamp);
+        // Create dispute (Tier 1 - stake = 200 USDC total, >= 100 USDC threshold)
+        uint256 expectedDeadline = block.timestamp + 48 hours; // votingPeriod
+        vm.expectEmit(true, true, true, false); // Check indexed params, ignore non-indexed data
+        emit DisputeCreated(
+            1,
+            address(testBet),
+            address(this), // initiator (test contract)
+            DisputeManager.DisputeTier.Tier1,
+            3, // judgeCount for Tier1 (3 judges)
+            expectedDeadline,
+            block.timestamp
+        );
 
         disputeId = disputeManager.createDispute(address(testBet));
 
@@ -183,7 +197,7 @@ contract DisputeManagerTest is Test {
         DisputeManager.Dispute memory dispute = disputeManager.getDispute(disputeId);
         assertEq(dispute.betContract, address(testBet));
         assertEq(uint8(dispute.tier), 1);
-        assertEq(dispute.judgeCount, 1);
+        assertEq(dispute.judgeCount, 3); // Tier1 = 3 judges
         assertEq(uint8(dispute.status), uint8(DisputeManager.DisputeStatus.Active));
     }
 
@@ -630,7 +644,7 @@ contract DisputeManagerTest is Test {
 
         // Appeal as opponent (within appeal window)
         vm.expectEmit(true, true, false, true);
-        emit DisputeAppealed(disputeId, 2, 2, block.timestamp);
+        emit DisputeAppealed(disputeId, 2, DisputeManager.DisputeTier.Tier2, block.timestamp);
 
         vm.prank(opponent);
         uint256 newDisputeId = disputeManager.appealDispute(disputeId);
@@ -861,7 +875,7 @@ contract DisputeManagerTest is Test {
 
         assertEq(dispute.betContract, address(testBet));
         assertEq(uint8(dispute.tier), uint8(DisputeManager.DisputeTier.Tier0));
-        assertEq(dispute.judgeCount, 1);
+        assertEq(dispute.judgeCount, 3); // Tier1 = 3 judges
         assertEq(dispute.votesSubmitted, 0);
         assertEq(uint8(dispute.status), uint8(DisputeManager.DisputeStatus.Active));
         assertEq(judges.length, 1);

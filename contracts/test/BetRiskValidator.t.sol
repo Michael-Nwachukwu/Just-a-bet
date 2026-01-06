@@ -8,6 +8,7 @@ import "../src/core/BetFactory.sol";
 import "../src/core/BetYieldVault.sol";
 import "../src/core/UsernameRegistry.sol";
 import "../src/mocks/MockUSDC.sol";
+import "../src/strategies/MockYieldStrategy.sol";
 
 contract BetRiskValidatorTest is Test {
     BetRiskValidator public validator;
@@ -15,7 +16,7 @@ contract BetRiskValidatorTest is Test {
     BetYieldVault public vault;
     UsernameRegistry public registry;
     MockUSDC public usdc;
-
+    MockYieldStrategy public yieldStrategy;
     address public owner = address(1);
     address public alice = address(2);
     address public bob = address(3);
@@ -30,7 +31,7 @@ contract BetRiskValidatorTest is Test {
         // Deploy contracts
         usdc = new MockUSDC();
         registry = new UsernameRegistry();
-        vault = new BetYieldVault(address(usdc), platformFeeReceiver);
+        vault = new BetYieldVault(address(usdc), platformFeeReceiver, address(yieldStrategy));
         validator = new BetRiskValidator();
         factory = new BetFactory(address(usdc), address(registry));
 

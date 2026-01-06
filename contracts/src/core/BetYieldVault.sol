@@ -70,7 +70,7 @@ contract BetYieldVault is Ownable, ReentrancyGuard {
      * @param _usdc Address of USDC token
      * @param _platformFeeReceiver Address to receive platform fees
      */
-    constructor(address _usdc, address _platformFeeReceiver) Ownable(msg.sender) {
+    constructor(address _usdc, address _platformFeeReceiver, address _initialStrategy) Ownable(msg.sender) {
         require(_usdc != address(0), "Invalid USDC address");
         if (_platformFeeReceiver == address(0)) revert InvalidFeeReceiver();
 
@@ -82,6 +82,8 @@ contract BetYieldVault is Ownable, ReentrancyGuard {
             totalPlatformFees: 0,
             totalYieldGenerated: 0
         });
+
+        yieldStrategy = IYieldStrategy(_initialStrategy);
     }
 
     // ============ External Functions - Bet Deposits ============

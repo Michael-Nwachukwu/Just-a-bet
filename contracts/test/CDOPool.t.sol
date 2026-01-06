@@ -7,14 +7,14 @@ import "../src/liquidity/CDOToken.sol";
 import "../src/liquidity/BetRiskValidator.sol";
 import "../src/core/BetYieldVault.sol";
 import "../src/mocks/MockUSDC.sol";
-
+import "../src/strategies/MockYieldStrategy.sol";
 contract CDOPoolTest is Test {
     CDOPool public pool;
     CDOToken public cdoToken;
     BetRiskValidator public riskValidator;
     BetYieldVault public yieldVault;
     MockUSDC public usdc;
-
+    MockYieldStrategy public yieldStrategy;
     address public owner;
     address public alice;
     address public bob;
@@ -54,7 +54,8 @@ contract CDOPoolTest is Test {
         // Deploy contracts
         usdc = new MockUSDC();
         cdoToken = new CDOToken("Just-a-Bet CDO", "JAB-CDO");
-        yieldVault = new BetYieldVault(address(usdc), treasury);
+        yieldStrategy = new MockYieldStrategy(address(usdc));
+        yieldVault = new BetYieldVault(address(usdc), treasury, address(yieldStrategy));
         riskValidator = new BetRiskValidator();
         pool = new CDOPool(address(usdc), address(cdoToken), address(yieldVault), address(riskValidator));
 

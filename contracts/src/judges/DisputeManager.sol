@@ -159,7 +159,7 @@ contract DisputeManager is Ownable, ReentrancyGuard {
         uint8 judgeCount = _getJudgeCountForTier(tier);
 
         // Create dispute
-        disputeId = totalDisputes++;
+        disputeId = ++totalDisputes;
         disputes[disputeId] = Dispute({
             betContract: betContract,
             initiator: msg.sender,
@@ -314,7 +314,7 @@ contract DisputeManager is Ownable, ReentrancyGuard {
         DisputeTier newTier = DisputeTier(uint8(dispute.tier) + 1);
         uint8 judgeCount = _getJudgeCountForTier(newTier);
 
-        newDisputeId = totalDisputes++;
+        newDisputeId = ++totalDisputes;
         disputes[newDisputeId] = Dispute({
             betContract: dispute.betContract,
             initiator: msg.sender,
@@ -423,7 +423,7 @@ contract DisputeManager is Ownable, ReentrancyGuard {
      * @dev Determine dispute tier based on stake amount
      */
     function _determineTier(uint256 totalStake) internal view returns (DisputeTier) {
-        if (totalStake <= config.tier0Threshold) {
+        if (totalStake < config.tier0Threshold) {
             return DisputeTier.Tier0;
         } else if (totalStake <= config.tier1Threshold) {
             return DisputeTier.Tier1;
