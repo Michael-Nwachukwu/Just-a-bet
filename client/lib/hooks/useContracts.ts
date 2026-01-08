@@ -37,14 +37,27 @@ export function useUSDCContract() {
 }
 
 /**
- * Hook to get CDOPool contract
+ * Hook to get CDOPool contract for a specific pool
+ * @param poolKey - 'sports', 'crypto', 'politics', or 'general'
  */
-export function useCDOPoolContract() {
+export function useCDOPoolContract(poolKey: 'sports' | 'crypto' | 'politics' | 'general') {
   const addresses = useContractAddresses()
   return getContract({
     client,
     chain: mantleSepolia,
-    address: addresses.cdoPool,
+    address: addresses.pools[poolKey].address,
+    abi: ABIS.CDOPool as any,
+  })
+}
+
+/**
+ * Hook to get CDOPool contract by address
+ */
+export function useCDOPoolContractByAddress(poolAddress: string) {
+  return getContract({
+    client,
+    chain: mantleSepolia,
+    address: poolAddress as `0x${string}`,
     abi: ABIS.CDOPool as any,
   })
 }

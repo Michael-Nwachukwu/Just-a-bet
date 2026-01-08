@@ -9,7 +9,7 @@ import { Providers } from "./providers"
 const spaceMono = SpaceMono({
   weight: ["400", "700"],
   subsets: ["latin"],
-  variable: "--font-space-mono",
+  // variable: "--font-space-mono",
 })
 
 export const metadata: Metadata = {
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${spaceMono.className} ${spaceMono.variable}`}>
+    <html lang="en" className={`${spaceMono.className}`}>
       <body className="bg-black text-white antialiased">
         <Providers>
           <Navbar />

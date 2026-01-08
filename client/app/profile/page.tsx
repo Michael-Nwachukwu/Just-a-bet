@@ -5,8 +5,58 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Copy, Check, Loader2 } from "lucide-react"
+import { useActiveAccount } from "thirdweb/react"
+import { useUserProfile } from "@/lib/hooks/useUsernameRegistry"
+import { useUserStats } from "@/lib/hooks/useUserStats"
+import { useAllUserPositions } from "@/lib/hooks/usePools"
+import UsernameRegistration from "@/components/profile/username-registration"
+import { useState } from "react"
 
 export default function ProfilePage() {
+  const [copied, setCopied] = useState(false)
+  const account = useActiveAccount()
+  const { profile, isLoading: isLoadingProfile } = useUserProfile(account?.address)
+  const { data: stats, isLoading: isLoadingStats } = useUserStats(account?.address)
+  const { data: positions, isLoading: isLoadingPositions } = useAllUserPositions(account?.address)
+
+  const handleCopy = () => {
+    if (account?.address) {
+      navigator.clipboard.writeText(account.address)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  // Format address for display
+  const formattedAddress = account?.address
+    ? `${account.address.slice(0, 6)}...${account.address.slice(-4)}`
+    : "Not connected"
+
+  // Format registration time
+  const registrationDate = profile?.registeredAt
+    ? new Date(Number(profile.registeredAt) * 1000).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "N/A"
+
+  // Check if wallet is connected
+  if (!account) {
+    return (
+      <main className="pt-16 pb-20">
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <Card className="text-center py-12">
+            <CardContent>
+              <h3 className="text-xl font-bold mb-2">Connect Wallet</h3>
+              <p className="text-neutral-400">Please connect your wallet to view your profile</p>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    )
+  }
   return (
     <main className="pt-16 pb-20">
       <div className="max-w-4xl mx-auto px-6 py-12">
@@ -33,53 +83,96 @@ export default function ProfilePage() {
 
           {/* Profile Tab */}
           <TabsContent value="profile" className="mt-8 space-y-6">
+            {/* Username Registration - Show if no username */}
+            {!isLoadingProfile && !profile?.hasUsername && (
+              <UsernameRegistration />
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex gap-6 items-start">
-                  <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-cyan-400 rounded-full flex items-center justify-center text-3xl font-bold">
-                    U
+                {isLoadingProfile ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
                   </div>
-                  <div className="flex-1">
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium mb-2">Username</label>
-                      <div className="text-lg font-bold">@username</div>
+                ) : (
+                  <div className="flex gap-6 items-start">
+                    <div className="w-24 h-24 bg-gradient-to-br from-orange-500 to-cyan-400 rounded-full flex items-center justify-center text-3xl font-bold">
+                      {profile?.username ? profile.username[0].toUpperCase() : account.address.slice(2, 3).toUpperCase()}
                     </div>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium mb-2">Wallet Address</label>
-                      <div className="flex items-center gap-2">
-                        <code className="text-sm bg-neutral-900 px-3 py-2 rounded">0x1234...5678</code>
-                        <Button size="sm" variant="outline" className="bg-transparent">
-                          Copy
-                        </Button>
+                    <div className="flex-1">
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-2">Username</label>
+                        <div className="text-lg font-bold">
+                          {profile?.hasUsername ? `@${profile.username}` : "No username registered"}
+                        </div>
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-2">Wallet Address</label>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm bg-neutral-900 px-3 py-2 rounded">{formattedAddress}</code>
+                          <Button size="sm" variant="outline" className="bg-transparent" onClick={handleCopy}>
+                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Member Since</label>
+                        <div className="text-neutral-400">{registrationDate}</div>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Member Since</label>
-                      <div className="text-neutral-400">January 1, 2024</div>
-                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: "Total Bets Created", value: "23" },
-                { label: "Win Rate", value: "58%" },
-                { label: "Total Volume", value: "$5,432" },
-                { label: "Total Earned", value: "$234" },
-              ].map((stat) => (
-                <Card key={stat.label}>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold text-orange-500 mb-1">{stat.value}</div>
-                    <div className="text-xs text-neutral-400">{stat.label}</div>
-                  </CardContent>
-                </Card>
-              ))}
+              {isLoadingStats ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="pt-6">
+                      <div className="h-8 bg-neutral-700 rounded animate-pulse mb-2"></div>
+                      <div className="h-4 bg-neutral-700 rounded animate-pulse w-2/3"></div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-2xl font-bold text-orange-500 mb-1">{stats?.totalBetsCreated || 0}</div>
+                      <div className="text-xs text-neutral-400">Total Bets</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-2xl font-bold text-orange-500 mb-1">
+                        {stats?.winRate ? `${stats.winRate.toFixed(1)}%` : "0%"}
+                      </div>
+                      <div className="text-xs text-neutral-400">Win Rate</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-2xl font-bold text-orange-500 mb-1">
+                        ${stats?.totalVolume ? stats.totalVolume.toFixed(2) : "0.00"}
+                      </div>
+                      <div className="text-xs text-neutral-400">Total Volume</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className={`text-2xl font-bold mb-1 ${(stats?.netProfit || 0) >= 0 ? "text-green-500" : "text-red-500"}`}>
+                        ${stats?.netProfit ? stats.netProfit.toFixed(2) : "0.00"}
+                      </div>
+                      <div className="text-xs text-neutral-400">Net Profit</div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </div>
           </TabsContent>
 
@@ -90,60 +183,62 @@ export default function ProfilePage() {
                 <CardTitle>Pool Positions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-neutral-700">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-bold">Pool Name</th>
-                        <th className="text-right py-3 px-4 font-bold">Deposited</th>
-                        <th className="text-right py-3 px-4 font-bold">Current Value</th>
-                        <th className="text-right py-3 px-4 font-bold">Earned</th>
-                        <th className="text-center py-3 px-4 font-bold">Status</th>
-                        <th className="text-center py-3 px-4 font-bold">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        {
-                          pool: "Sports Pool - NBA",
-                          deposited: 500,
-                          value: 525,
-                          earned: 25,
-                          status: "Unlocked",
-                        },
-                        {
-                          pool: "Crypto Pool - BTC/ETH",
-                          deposited: 1000,
-                          value: 1050,
-                          earned: 50,
-                          status: "Locked (30d)",
-                        },
-                        {
-                          pool: "Entertainment Pool",
-                          deposited: 300,
-                          value: 312,
-                          earned: 12,
-                          status: "Unlocked",
-                        },
-                      ].map((position) => (
-                        <tr key={position.pool} className="border-b border-neutral-700 last:border-0">
-                          <td className="py-4 px-4">{position.pool}</td>
-                          <td className="text-right py-4 px-4">${position.deposited}</td>
-                          <td className="text-right py-4 px-4">${position.value}</td>
-                          <td className="text-right py-4 px-4 text-green-400">+${position.earned}</td>
-                          <td className="text-center py-4 px-4 text-xs">
-                            <Badge className="bg-orange-500/20 text-orange-400 border-0">{position.status}</Badge>
-                          </td>
-                          <td className="text-center py-4 px-4">
-                            <Button size="sm" variant="outline" className="bg-transparent">
-                              Withdraw
-                            </Button>
-                          </td>
+                {isLoadingPositions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+                  </div>
+                ) : positions && positions.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="border-b border-neutral-700">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-bold">Pool Name</th>
+                          <th className="text-right py-3 px-4 font-bold">Deposited</th>
+                          <th className="text-right py-3 px-4 font-bold">Tier</th>
+                          <th className="text-center py-3 px-4 font-bold">Status</th>
+                          <th className="text-center py-3 px-4 font-bold">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {positions.map((position, idx) => {
+                          const tierNames = ["Flexible", "30 Days", "90 Days", "365 Days"]
+                          const tierName = tierNames[position.tier] || "Unknown"
+                          const lockEndDate = position.lockEndTime
+                            ? new Date(Number(position.lockEndTime) * 1000).toLocaleDateString()
+                            : "N/A"
+
+                          return (
+                            <tr key={`${position.poolAddress}-${idx}`} className="border-b border-neutral-700 last:border-0">
+                              <td className="py-4 px-4">{position.poolName}</td>
+                              <td className="text-right py-4 px-4">${position.depositAmountFormatted.toFixed(2)}</td>
+                              <td className="text-right py-4 px-4 text-xs">{tierName}</td>
+                              <td className="text-center py-4 px-4 text-xs">
+                                <Badge className={`${position.isLocked ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"} border-0`}>
+                                  {position.isLocked ? `Locked until ${lockEndDate}` : "Unlocked"}
+                                </Badge>
+                              </td>
+                              <td className="text-center py-4 px-4">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-transparent"
+                                  disabled={position.isLocked}
+                                >
+                                  Withdraw
+                                </Button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-neutral-400">
+                    <p>No active pool positions</p>
+                    <p className="text-sm mt-2">Deposit into pools to start earning yield</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Github, Twitter, MessageCircle } from "lucide-react"
+import Image from "next/image"
 
 export default function Footer() {
   return (
@@ -8,11 +9,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-8">
           {/* About */}
           <div>
-            <div className="text-lg font-bold mb-4">
-              <span className="text-orange-500">JUST</span>
-              <span className="text-cyan-400">-A-</span>
-              <span className="text-orange-500">BET</span>
-            </div>
+            <Image src="/logo.svg" alt="Logo" width={100} height={100} className="w-32 mb-4" />
             <p className="text-neutral-400 text-sm mb-4">Decentralized peer-to-peer betting platform</p>
             <div className="flex gap-4">
               <Link href="#" className="text-neutral-400 hover:text-orange-500 transition-colors">

@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConnectButton, useActiveAccount } from "thirdweb/react"
 import { client, mantleSepolia, wallets } from "@/lib/thirdweb"
+import Image from "next/image"
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -17,18 +18,15 @@ export default function Navbar() {
     { label: "My Bets", href: "/my-bets" },
     { label: "Pools", href: "/pools" },
     { label: "Judges", href: "/judges" },
+    { label: "Profile", href: "/profile" },
   ]
 
   return (
     <nav className="fixed top-0 w-full bg-neutral-950 border-b border-orange-500/20 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="text-2xl font-bold">
-            <span className="text-orange-500">JUST</span>
-            <span className="text-cyan-400">-A-</span>
-            <span className="text-orange-500">BET</span>
-          </div>
+          <Image src="/logo.svg" alt="Logo" width={100} height={100} className="w-32" />
         </Link>
 
         {/* Desktop Navigation */}

@@ -8,12 +8,6 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {
-      fontFamily: {
-        sans: ["var(--font-space-mono)", ...defaultTheme.fontFamily.sans],
-        mono: ["var(--font-space-mono)", ...defaultTheme.fontFamily.mono],
-      },
-    },
   },
   plugins: [],
 };

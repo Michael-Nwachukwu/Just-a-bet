@@ -2,11 +2,13 @@ import Link from "next/link"
 import { Clock, DollarSign } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { type BetStatus } from "@/lib/utils/bet-helpers"
+import { useDisplayName } from "@/lib/hooks/useUsernameRegistry"
 
 interface BetCardProps {
   id: string
   description: string
-  status: "pending" | "active" | "completed"
+  status: BetStatus
   category: string
   creator: string
   opponent?: string
@@ -26,10 +28,24 @@ export default function BetCard({
   duration,
   endDate,
 }: BetCardProps) {
-  const statusColors = {
+  // Fetch display names for creator and opponent
+  const { displayName: creatorDisplay } = useDisplayName(creator)
+  const { displayName: opponentDisplay } = useDisplayName(opponent === "0x0000000000000000000000000000000000000000" ? undefined : opponent)
+
+  const statusColors: Record<BetStatus, string> = {
     pending: "bg-neutral-500/20 text-neutral-300",
     active: "bg-orange-500/20 text-orange-400",
+    awaiting_resolution: "bg-yellow-500/20 text-yellow-400",
+    in_dispute: "bg-red-500/20 text-red-400",
     completed: "bg-cyan-500/20 text-cyan-400",
+    cancelled: "bg-neutral-600/20 text-neutral-500",
+  }
+
+  const formatStatus = (status: BetStatus): string => {
+    return status
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
   }
 
   const categoryColors = {
@@ -46,7 +62,7 @@ export default function BetCard({
         <CardContent className="pt-6">
           {/* Header */}
           <div className="flex justify-between items-start mb-4">
-            <Badge className={`${statusColors[status]} border-0`}>{status.toUpperCase()}</Badge>
+            <Badge className={`${statusColors[status]} border-0`}>{formatStatus(status)}</Badge>
             <Badge className={`${categoryColors[category as keyof typeof categoryColors]} border-0 text-xs`}>
               {category}
             </Badge>
@@ -57,9 +73,9 @@ export default function BetCard({
 
           {/* Participants */}
           <div className="flex items-center justify-between mb-4 text-sm">
-            <span className="text-neutral-400">{creator}</span>
+            <span className="text-neutral-400">{creatorDisplay}</span>
             <span className="text-orange-500 font-bold">VS</span>
-            <span className="text-neutral-400">{opponent || "🏠 House"}</span>
+            <span className="text-neutral-400">{opponent === "0x0000000000000000000000000000000000000000" ? "🏠 House" : opponentDisplay}</span>
           </div>
 
           {/* Details Grid */}

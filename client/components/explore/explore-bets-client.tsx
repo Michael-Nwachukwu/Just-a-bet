@@ -1,82 +1,100 @@
 "use client"
 
-import { useState } from "react"
-import { Search } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Search, RefreshCw, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import BetCard from "@/components/bets/bet-card"
-
-// Mock data
-const mockBets = [
-  {
-    id: "1",
-    description: "Lakers will beat Celtics in tonight's game",
-    status: "active" as const,
-    category: "sports",
-    creator: "john_doe",
-    opponent: "jane_smith",
-    stake: 100,
-    duration: "1 day",
-    endDate: "Jan 15, 2024",
-  },
-  {
-    id: "2",
-    description: "Bitcoin will reach $50k by end of month",
-    status: "pending" as const,
-    category: "crypto",
-    creator: "crypto_king",
-    opponent: undefined,
-    stake: 500,
-    duration: "30 days",
-    endDate: "Feb 1, 2024",
-  },
-  {
-    id: "3",
-    description: "Who will win the 2024 NBA Finals?",
-    status: "active" as const,
-    category: "sports",
-    creator: "sports_fan",
-    opponent: "game_master",
-    stake: 250,
-    duration: "7 days",
-    endDate: "Jan 22, 2024",
-  },
-  {
-    id: "4",
-    description: "Ethereum will outperform Bitcoin this quarter",
-    status: "completed" as const,
-    category: "crypto",
-    creator: "eth_believer",
-    opponent: "btc_maximalist",
-    stake: 1000,
-    duration: "90 days",
-    endDate: "Dec 15, 2023",
-  },
-]
+import { useAllBetAddresses, useBatchBetDetails } from "@/lib/hooks/useBets"
+import { transformBetData } from "@/lib/utils/bet-helpers"
 
 export default function ExploreBetsClient() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
+  const [page, setPage] = useState(0)
+  const pageSize = 20
 
-  const filteredBets = mockBets.filter((bet) => {
-    const matchesSearch = bet.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || bet.status === statusFilter
-    const matchesCategory = categoryFilter === "all" || bet.category === categoryFilter
-    return matchesSearch && matchesStatus && matchesCategory
-  })
+  // Fetch all bet addresses
+  const { data: allAddresses, isLoading: isLoadingAddresses, refetch: refetchAddresses } = useAllBetAddresses()
+
+  // Paginate addresses
+  const paginatedAddresses = useMemo(() => {
+    if (!allAddresses) return []
+    return allAddresses.slice(page * pageSize, (page + 1) * pageSize)
+  }, [allAddresses, page])
+
+  // Fetch bet details for current page
+  const { data: bets, isLoading: isLoadingBets, refetch: refetchBets } = useBatchBetDetails(paginatedAddresses)
+
+  const isLoading = isLoadingAddresses || isLoadingBets
+
+  // Transform and filter bets
+  const filteredBets = useMemo(() => {
+    if (!bets) return []
+
+    const transformed = bets.map(transformBetData)
+
+    return transformed.filter((bet) => {
+      const matchesSearch = bet.description.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = statusFilter === "all" || bet.status === statusFilter
+      const matchesCategory = categoryFilter === "all" || bet.category.toLowerCase() === categoryFilter.toLowerCase()
+      return matchesSearch && matchesStatus && matchesCategory
+    })
+  }, [bets, searchTerm, statusFilter, categoryFilter])
+
+  // Sort bets
+  const sortedBets = useMemo(() => {
+    const sorted = [...filteredBets]
+
+    switch (sortBy) {
+      case "newest":
+        sorted.sort((a, b) => b.createdAt - a.createdAt)
+        break
+      case "highest-stake":
+        sorted.sort((a, b) => b.stake - a.stake)
+        break
+      case "ending-soon":
+        sorted.sort((a, b) => a.expiresAt - b.expiresAt)
+        break
+    }
+
+    return sorted
+  }, [filteredBets, sortBy])
+
+  const handleRefresh = () => {
+    refetchAddresses()
+    refetchBets()
+  }
+
+  const totalPages = allAddresses ? Math.ceil(allAddresses.length / pageSize) : 0
+  const hasNextPage = page < totalPages - 1
+  const hasPrevPage = page > 0
 
   return (
     <main className="pt-16 pb-20">
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 uppercase">
-            <span className="text-orange-500">EXPLORE</span> BETS
-          </h1>
-          <p className="text-neutral-400">Browse all active and pending bets on the platform</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2 uppercase">
+              <span className="text-orange-500">EXPLORE</span> BETS
+            </h1>
+            <p className="text-neutral-400">
+              Browse all active and pending bets on the platform {allAddresses && `(${allAddresses.length} total)`}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
 
         {/* Filters Bar */}
@@ -137,17 +155,58 @@ export default function ExploreBetsClient() {
         </div>
 
         {/* Bets Grid */}
-        {filteredBets.length > 0 ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredBets.map((bet) => (
-              <BetCard key={bet.id} {...bet} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-neutral-900 border border-orange-500/20 rounded-lg p-6 animate-pulse">
+                <div className="h-4 bg-neutral-700 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-neutral-700 rounded w-1/2 mb-4"></div>
+                <div className="h-4 bg-neutral-700 rounded w-2/3"></div>
+              </div>
             ))}
           </div>
+        ) : sortedBets.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedBets.map((bet) => (
+                <BetCard key={bet.id} {...bet} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={!hasPrevPage || isLoading}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-neutral-400">
+                  Page {page + 1} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNextPage || isLoading}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12">
             <Search className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2">No bets found</h3>
-            <p className="text-neutral-400 mb-6">Try adjusting your filters</p>
+            <h3 className="text-xl font-bold mb-2">
+              {allAddresses?.length === 0 ? "No bets yet" : "No bets found"}
+            </h3>
+            <p className="text-neutral-400 mb-6">
+              {allAddresses?.length === 0
+                ? "Be the first to create a bet!"
+                : "Try adjusting your filters"}
+            </p>
             <Button
               variant="outline"
               onClick={() => {

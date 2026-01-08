@@ -128,6 +128,7 @@ export default function CreateBetPage() {
   }
 
   const handleCreateBet = async () => {
+    console.log("handleCreateBet")
     if (!isConnected) {
       alert("Please connect your wallet first")
       return
@@ -135,6 +136,8 @@ export default function CreateBetPage() {
 
     const durationInSeconds = durationToSeconds(Number(formData.duration), formData.durationUnit)
     const opponentIdentifier = formData.opponentType === "house" ? "house" : formData.opponentName
+
+    console.log("opponentIdentifier", opponentIdentifier)
 
     await createBet({
       opponentIdentifier,

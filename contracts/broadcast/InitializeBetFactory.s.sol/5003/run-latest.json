@@ -1,0 +1,54 @@
+{
+  "transactions": [
+    {
+      "hash": "0x0912ad034ba185117f359f792d385b8c37000603c463a8ebe3cc285895475e5d",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x76b27dfb0408baa19b3f41469b123c5bbfd56047",
+      "function": "setDefaultPool(uint256)",
+      "arguments": [
+        "3"
+      ],
+      "transaction": {
+        "from": "0x7fbbe68068a3aa7e479a1e51e792f4c2073b018f",
+        "to": "0x76b27dfb0408baa19b3f41469b123c5bbfd56047",
+        "gas": "0xf957a68",
+        "value": "0x0",
+        "input": "0x8dda41a90000000000000000000000000000000000000000000000000000000000000003",
+        "nonce": "0x1b",
+        "chainId": "0x138b"
+      },
+      "additionalContracts": [],
+      "isFixedGasLimit": false
+    }
+  ],
+  "receipts": [
+    {
+      "status": "0x1",
+      "cumulativeGasUsed": "0x9ea0ed3",
+      "logs": [],
+      "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "type": "0x0",
+      "transactionHash": "0x0912ad034ba185117f359f792d385b8c37000603c463a8ebe3cc285895475e5d",
+      "transactionIndex": "0x1",
+      "blockHash": "0xa6e405262ecce13c549108485d56552d112c4b43ab643aad063ed8429862abc7",
+      "blockNumber": "0x1fa2a2f",
+      "gasUsed": "0x9e914ea",
+      "effectiveGasPrice": "0x132b3a0",
+      "from": "0x7fbbe68068a3aa7e479a1e51e792f4c2073b018f",
+      "to": "0x76b27dfb0408baa19b3f41469b123c5bbfd56047",
+      "contractAddress": null,
+      "l1Fee": "0x1519201f0a8",
+      "l1FeeScalar": "0.01",
+      "l1GasPrice": "0x1596d25",
+      "l1GasUsed": "0x818",
+      "tokenRatio": "0xc13"
+    }
+  ],
+  "libraries": [],
+  "pending": [],
+  "returns": {},
+  "timestamp": 1767888705008,
+  "chain": 5003,
+  "commit": "ff39dda"
+}

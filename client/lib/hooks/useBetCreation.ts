@@ -9,7 +9,7 @@ export function useCreateBet() {
   const betFactory = useBetFactoryContract()
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const createBet = async (params: {
+  const createBet = (params: {
     opponentIdentifier: string
     stakeAmount: string // in USDC
     description: string
@@ -17,29 +17,49 @@ export function useCreateBet() {
     duration: number // in seconds
     tags: string[]
   }) => {
-    // Convert stake amount to 6 decimals (USDC)
-    const stakeAmountWei = toUnits(params.stakeAmount, 6)
+    console.log("createBet called with params:", params)
 
-    const transaction = prepareContractCall({
-      contract: betFactory,
-      method: "function createBet(string, uint256, string, string, uint256, string[])",
-      params: [
-        params.opponentIdentifier,
-        stakeAmountWei,
-        params.description,
-        params.outcomeDescription,
-        BigInt(params.duration),
-        params.tags,
-      ],
-    })
+    try {
+      // Convert stake amount to 6 decimals (USDC)
+      const stakeAmountWei = toUnits(params.stakeAmount, 6)
+      console.log("Stake amount in wei:", stakeAmountWei.toString())
 
-    sendTransaction(transaction)
+      const transaction = prepareContractCall({
+        contract: betFactory,
+        method: "function createBet(string, uint256, string, string, uint256, string[])",
+        params: [
+          params.opponentIdentifier,
+          stakeAmountWei,
+          params.description,
+          params.outcomeDescription,
+          BigInt(params.duration),
+          params.tags,
+        ],
+      })
+
+      console.log("Transaction prepared:", transaction)
+      console.log("Calling sendTransaction...")
+
+      sendTransaction(transaction, {
+        onSuccess: (result) => {
+          console.log("Transaction successful:", result)
+        },
+        onError: (error) => {
+          console.error("Transaction error:", error)
+        },
+      })
+    } catch (err) {
+      console.error("Error in createBet:", err)
+      throw err
+    }
   }
 
   return {
     createBet,
-    transactionResult,
     isPending,
+    isConfirming: isPending,
+    isSuccess: !!transactionResult && !error,
+    hash: transactionResult?.transactionHash,
     error,
   }
 }
@@ -51,22 +71,41 @@ export function useUSDCApproval(spenderAddress: string) {
   const usdc = useUSDCContract()
   const { mutate: sendTransaction, data: transactionResult, isPending } = useSendTransaction()
 
-  const approve = async (amount: string) => {
-    const amountWei = toUnits(amount, 6)
+  const approve = (amount: string) => {
+    console.log("approve called with amount:", amount, "spender:", spenderAddress)
 
-    const transaction = prepareContractCall({
-      contract: usdc,
-      method: "function approve(address, uint256) returns (bool)",
-      params: [spenderAddress, amountWei],
-    })
+    try {
+      const amountWei = toUnits(amount, 6)
+      console.log("Approval amount in wei:", amountWei.toString())
 
-    sendTransaction(transaction)
+      const transaction = prepareContractCall({
+        contract: usdc,
+        method: "function approve(address, uint256) returns (bool)",
+        params: [spenderAddress, amountWei],
+      })
+
+      console.log("Approval transaction prepared:", transaction)
+
+      sendTransaction(transaction, {
+        onSuccess: (result) => {
+          console.log("Approval successful:", result)
+        },
+        onError: (error) => {
+          console.error("Approval error:", error)
+        },
+      })
+    } catch (err) {
+      console.error("Error in approve:", err)
+      throw err
+    }
   }
 
   return {
     approve,
-    transactionResult,
     isPending,
+    isConfirming: isPending,
+    isSuccess: !!transactionResult,
+    hash: transactionResult?.transactionHash,
   }
 }
 
@@ -79,7 +118,7 @@ export function useUSDCAllowance(owner: string | undefined, spender: string) {
   const { data: allowance, refetch } = useReadContract({
     contract: usdc,
     method: "function allowance(address, address) view returns (uint256)",
-    params: owner ? [owner, spender] : undefined,
+    params: owner ? [owner, spender] as any : undefined,
   })
 
   return {
@@ -97,7 +136,7 @@ export function useUSDCBalance(address: string | undefined) {
   const { data: balance, refetch } = useReadContract({
     contract: usdc,
     method: "function balanceOf(address) view returns (uint256)",
-    params: address ? [address] : undefined,
+    params: address ? [address] as any : undefined,
   })
 
   return {
