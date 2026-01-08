@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./Bet.sol";
 import "./UsernameRegistry.sol";
 import "../liquidity/CDOPool.sol";
+import "../liquidity/CDOPoolFactory.sol";
 import "../liquidity/BetRiskValidator.sol";
 
 /**
@@ -23,7 +24,9 @@ contract BetFactory is Ownable, ReentrancyGuard {
     UsernameRegistry public immutable usernameRegistry;
 
     // House (CDO Pool) integration
-    CDOPool public cdoPool;
+    CDOPool public cdoPool; // DEPRECATED: Legacy single pool support
+    CDOPoolFactory public poolFactory; // NEW: Multi-pool factory
+    uint256 public defaultPoolId; // Default pool for uncategorized bets
     BetRiskValidator public riskValidator;
 
     // Special identifier for house opponent
@@ -97,6 +100,8 @@ contract BetFactory is Ownable, ReentrancyGuard {
     error InvalidDuration();
     error YieldVaultNotSet();
     error CDOPoolNotSet();
+    error PoolFactoryNotSet();
+    error NoPoolForCategory();
     error RiskValidatorNotSet();
     error HouseBetRejectedByRiskValidator(string reason);
     error InsufficientPoolLiquidity();
@@ -345,8 +350,10 @@ contract BetFactory is Ownable, ReentrancyGuard {
         string[] calldata tags
     ) internal returns (address betContract) {
         // Validate house bet requirements
-        if (address(cdoPool) == address(0)) revert CDOPoolNotSet();
         if (address(riskValidator) == address(0)) revert RiskValidatorNotSet();
+
+        // NEW: Select pool based on bet category (first tag)
+        CDOPool selectedPool = _selectPoolForBet(tags);
 
         // Create bet with HOUSE_ADDRESS as opponent
         betContract = _deployBet(
@@ -359,8 +366,8 @@ contract BetFactory is Ownable, ReentrancyGuard {
             tags
         );
 
-        // Validate and match with pool (BetRiskValidator enforces security)
-        _validateAndMatchHouseBet(betContract, stakeAmount);
+        // Validate and match with selected pool (BetRiskValidator enforces security)
+        _validateAndMatchHouseBet(betContract, stakeAmount, selectedPool);
 
         // Track house bet
         bytes32 betId = keccak256(abi.encodePacked(
@@ -378,9 +385,16 @@ contract BetFactory is Ownable, ReentrancyGuard {
 
     /**
      * @dev Validate bet and match with pool
+     * @param betContract Address of bet contract
+     * @param stakeAmount Stake amount in USDC
+     * @param pool Selected CDOPool to match with
      */
-    function _validateAndMatchHouseBet(address betContract, uint256 stakeAmount) internal {
-        uint256 availableLiquidity = cdoPool.getAvailableLiquidity();
+    function _validateAndMatchHouseBet(
+        address betContract,
+        uint256 stakeAmount,
+        CDOPool pool
+    ) internal {
+        uint256 availableLiquidity = pool.getAvailableLiquidity();
 
         // Check pool has sufficient liquidity first
         if (stakeAmount > availableLiquidity) {
@@ -392,7 +406,7 @@ contract BetFactory is Ownable, ReentrancyGuard {
         (bool isValid, string memory reason) = riskValidator.validateBetForMatching(
             betContract,
             availableLiquidity,
-            cdoPool.getUtilizationRate()
+            pool.getUtilizationRate()
         );
 
         if (!isValid) {
@@ -400,8 +414,44 @@ contract BetFactory is Ownable, ReentrancyGuard {
             revert HouseBetRejectedByRiskValidator(reason);
         }
 
-        // Match with pool immediately
-        cdoPool.matchBet(betContract, stakeAmount);
+        // Match with selected pool immediately
+        pool.matchBet(betContract, stakeAmount);
+    }
+
+    /**
+     * @dev Select appropriate pool based on bet category
+     * @param tags Bet tags (first tag is primary category)
+     * @return CDOPool instance to match bet with
+     */
+    function _selectPoolForBet(string[] calldata tags) internal view returns (CDOPool) {
+        // Priority 1: Use multi-pool factory if set
+        if (address(poolFactory) != address(0)) {
+            // Try to find pool by category (first tag)
+            if (tags.length > 0) {
+                address poolAddress = poolFactory.getPoolByCategory(tags[0]);
+                if (poolAddress != address(0)) {
+                    return CDOPool(poolAddress);
+                }
+            }
+
+            // Fallback to default pool if category not found
+            if (defaultPoolId < poolFactory.getTotalPools()) {
+                CDOPoolFactory.PoolMetadata memory metadata = poolFactory.getPoolMetadata(defaultPoolId);
+                if (metadata.isActive) {
+                    return CDOPool(metadata.poolAddress);
+                }
+            }
+
+            revert NoPoolForCategory();
+        }
+
+        // Priority 2: Use legacy single pool (backward compatibility)
+        if (address(cdoPool) != address(0)) {
+            return cdoPool;
+        }
+
+        // No pool configured
+        revert CDOPoolNotSet();
     }
 
     /**
@@ -445,13 +495,33 @@ contract BetFactory is Ownable, ReentrancyGuard {
     // ============ Owner Functions - House Integration ============
 
     /**
-     * @notice Set CDO Pool address
+     * @notice Set CDO Pool address (LEGACY - for backward compatibility)
+     * @dev Use setCDOPoolFactory for multi-pool support
      */
     function setCDOPool(address _cdoPool) external onlyOwner {
         require(_cdoPool != address(0), "Invalid pool");
         address oldPool = address(cdoPool);
         cdoPool = CDOPool(_cdoPool);
         emit CDOPoolUpdated(oldPool, _cdoPool, block.timestamp);
+    }
+
+    /**
+     * @notice Set CDO Pool Factory address (NEW - multi-pool support)
+     * @param _poolFactory Address of CDOPoolFactory
+     */
+    function setCDOPoolFactory(address _poolFactory) external onlyOwner {
+        require(_poolFactory != address(0), "Invalid factory");
+        poolFactory = CDOPoolFactory(_poolFactory);
+    }
+
+    /**
+     * @notice Set default pool ID for uncategorized bets
+     * @param _defaultPoolId Pool ID to use as fallback
+     */
+    function setDefaultPool(uint256 _defaultPoolId) external onlyOwner {
+        require(address(poolFactory) != address(0), "Factory not set");
+        require(_defaultPoolId < poolFactory.getTotalPools(), "Invalid pool ID");
+        defaultPoolId = _defaultPoolId;
     }
 
     /**

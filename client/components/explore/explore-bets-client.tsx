@@ -97,7 +97,7 @@ export default function ExploreBetsClient() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="bg-neutral-800 border-neutral-700">
+              <SelectTrigger className="bg-neutral-800 border-neutral-700 w-full">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -110,7 +110,7 @@ export default function ExploreBetsClient() {
 
             {/* Category Filter */}
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="bg-neutral-800 border-neutral-700">
+              <SelectTrigger className="bg-neutral-800 border-neutral-700 w-full">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -124,7 +124,7 @@ export default function ExploreBetsClient() {
 
             {/* Sort By */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="bg-neutral-800 border-neutral-700">
+              <SelectTrigger className="bg-neutral-800 border-neutral-700 w-full">
                 <SelectValue placeholder="Sort By" />
               </SelectTrigger>
               <SelectContent>

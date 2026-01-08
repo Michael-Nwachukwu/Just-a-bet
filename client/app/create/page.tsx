@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { useAccount } from "wagmi"
+import { useActiveAccount } from "thirdweb/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -17,7 +17,9 @@ import { durationToSeconds, formatUSDC } from "@/lib/utils"
 type Step = "details" | "opponent" | "settings" | "ai-validation" | "review"
 
 export default function CreateBetPage() {
-  const { address, isConnected } = useAccount()
+  const account = useActiveAccount()
+  const address = account?.address
+  const isConnected = !!account
   const contractAddresses = useContractAddresses()
   const [step, setStep] = useState<Step>("details")
   const [formData, setFormData] = useState({

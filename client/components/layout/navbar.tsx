@@ -4,24 +4,20 @@ import { useState } from "react"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAppKit } from "@reown/appkit/react"
-import { useAccount } from "wagmi"
+import { ConnectButton, useActiveAccount } from "thirdweb/react"
+import { client, mantleSepolia, wallets } from "@/lib/thirdweb"
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { open } = useAppKit()
-  const { address, isConnected } = useAccount()
+  const account = useActiveAccount()
 
   const navLinks = [
     { label: "Explore", href: "/explore" },
     { label: "Create Bet", href: "/create" },
     { label: "My Bets", href: "/my-bets" },
     { label: "Pools", href: "/pools" },
+    { label: "Judges", href: "/judges" },
   ]
-
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-  }
 
   return (
     <nav className="fixed top-0 w-full bg-neutral-950 border-b border-orange-500/20 z-50">
@@ -50,13 +46,21 @@ export default function Navbar() {
 
         {/* Right Section */}
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            className="hidden sm:inline-flex bg-transparent"
-            onClick={() => open()}
-          >
-            {isConnected && address ? formatAddress(address) : "Connect Wallet"}
-          </Button>
+          <div className="hidden sm:block">
+            <ConnectButton
+              client={client}
+              wallets={wallets}
+              chain={mantleSepolia}
+              theme="dark"
+              connectButton={{
+                label: "Connect Wallet",
+                className: "!bg-transparent !border !border-neutral-700 !text-neutral-100 hover:!border-orange-500 hover:!text-orange-500 !transition-colors",
+              }}
+              detailsButton={{
+                className: "!bg-transparent !border !border-neutral-700 !text-neutral-100 hover:!border-orange-500 !transition-colors",
+              }}
+            />
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -82,9 +86,18 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Button className="w-full mt-4" onClick={() => open()}>
-              {isConnected && address ? formatAddress(address) : "Connect Wallet"}
-            </Button>
+            <div className="mt-4">
+              <ConnectButton
+                client={client}
+                wallets={wallets}
+                chain={mantleSepolia}
+                theme="dark"
+                connectButton={{
+                  label: "Connect Wallet",
+                  className: "!w-full",
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

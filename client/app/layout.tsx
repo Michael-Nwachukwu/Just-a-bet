@@ -6,7 +6,11 @@ import Navbar from "@/components/layout/navbar"
 import Footer from "@/components/layout/footer"
 import { Providers } from "./providers"
 
-const spaceMono = SpaceMono({ weight: ["400", "700"], subsets: ["latin"] })
+const spaceMono = SpaceMono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-space-mono",
+})
 
 export const metadata: Metadata = {
   title: "Just-a-Bet - P2P Betting Platform",
@@ -19,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${spaceMono.className} bg-black text-white antialiased`}>
+    <html lang="en" className={`${spaceMono.className} ${spaceMono.variable}`}>
+      <body className="bg-black text-white antialiased">
         <Providers>
           <Navbar />
           {children}

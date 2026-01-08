@@ -80,7 +80,7 @@ contract DisputeManagerTest is Test {
         // Deploy contracts
         usdc = new MockUSDC();
         usernameRegistry = new UsernameRegistry();
-        yieldVault = new BetYieldVault(address(usdc), treasury);
+        yieldVault = new BetYieldVault(address(usdc), treasury, address(0));
         betFactory = new BetFactory(address(usdc), address(usernameRegistry));
         judgeRegistry = new JudgeRegistry();
         disputeManager = new DisputeManager(address(judgeRegistry));

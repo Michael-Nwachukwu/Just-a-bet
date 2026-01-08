@@ -1,5 +1,5 @@
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi"
-import { parseUnits, Address } from "viem"
+import { useReadContract, useSendTransaction } from "thirdweb/react"
+import { prepareContractCall, toUnits } from "thirdweb"
 import { useBetFactoryContract, useUSDCContract } from "./useContracts"
 
 /**
@@ -7,11 +7,7 @@ import { useBetFactoryContract, useUSDCContract } from "./useContracts"
  */
 export function useCreateBet() {
   const betFactory = useBetFactoryContract()
-  const { writeContract, data: hash, isPending, error } = useWriteContract()
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  })
+  const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
   const createBet = async (params: {
     opponentIdentifier: string
@@ -22,13 +18,12 @@ export function useCreateBet() {
     tags: string[]
   }) => {
     // Convert stake amount to 6 decimals (USDC)
-    const stakeAmountWei = parseUnits(params.stakeAmount, 6)
+    const stakeAmountWei = toUnits(params.stakeAmount, 6)
 
-    writeContract({
-      address: betFactory.address,
-      abi: betFactory.abi,
-      functionName: "createBet",
-      args: [
+    const transaction = prepareContractCall({
+      contract: betFactory,
+      method: "function createBet(string, uint256, string, string, uint256, string[])",
+      params: [
         params.opponentIdentifier,
         stakeAmountWei,
         params.description,
@@ -37,14 +32,14 @@ export function useCreateBet() {
         params.tags,
       ],
     })
+
+    sendTransaction(transaction)
   }
 
   return {
     createBet,
-    hash,
+    transactionResult,
     isPending,
-    isConfirming,
-    isSuccess,
     error,
   }
 }
@@ -52,52 +47,43 @@ export function useCreateBet() {
 /**
  * Hook for checking and approving USDC spending
  */
-export function useUSDCApproval(spenderAddress: Address) {
+export function useUSDCApproval(spenderAddress: string) {
   const usdc = useUSDCContract()
-  const { writeContract, data: hash, isPending } = useWriteContract()
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  })
+  const { mutate: sendTransaction, data: transactionResult, isPending } = useSendTransaction()
 
   const approve = async (amount: string) => {
-    const amountWei = parseUnits(amount, 6)
+    const amountWei = toUnits(amount, 6)
 
-    writeContract({
-      address: usdc.address,
-      abi: usdc.abi,
-      functionName: "approve",
-      args: [spenderAddress, amountWei],
+    const transaction = prepareContractCall({
+      contract: usdc,
+      method: "function approve(address, uint256) returns (bool)",
+      params: [spenderAddress, amountWei],
     })
+
+    sendTransaction(transaction)
   }
 
   return {
     approve,
-    hash,
+    transactionResult,
     isPending,
-    isConfirming,
-    isSuccess,
   }
 }
 
 /**
  * Hook to check USDC allowance
  */
-export function useUSDCAllowance(owner: Address | undefined, spender: Address) {
+export function useUSDCAllowance(owner: string | undefined, spender: string) {
   const usdc = useUSDCContract()
 
   const { data: allowance, refetch } = useReadContract({
-    address: usdc.address,
-    abi: usdc.abi,
-    functionName: "allowance",
-    args: owner ? [owner, spender] : undefined,
-    query: {
-      enabled: !!owner,
-    },
+    contract: usdc,
+    method: "function allowance(address, address) view returns (uint256)",
+    params: owner ? [owner, spender] : undefined,
   })
 
   return {
-    allowance: allowance as bigint | undefined,
+    allowance: allowance ? BigInt(allowance.toString()) : undefined,
     refetch,
   }
 }
@@ -105,21 +91,17 @@ export function useUSDCAllowance(owner: Address | undefined, spender: Address) {
 /**
  * Hook to check USDC balance
  */
-export function useUSDCBalance(address: Address | undefined) {
+export function useUSDCBalance(address: string | undefined) {
   const usdc = useUSDCContract()
 
   const { data: balance, refetch } = useReadContract({
-    address: usdc.address,
-    abi: usdc.abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address,
-    },
+    contract: usdc,
+    method: "function balanceOf(address) view returns (uint256)",
+    params: address ? [address] : undefined,
   })
 
   return {
-    balance: balance as bigint | undefined,
+    balance: balance ? BigInt(balance.toString()) : undefined,
     refetch,
   }
 }
