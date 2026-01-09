@@ -10,6 +10,7 @@ import {
   useUsernameAvailability,
   useValidateUsernameFormat,
 } from "@/lib/hooks/useUsernameRegistry"
+import { toast } from "sonner"
 
 export default function UsernameRegistration() {
   const [username, setUsername] = useState("")
@@ -21,10 +22,15 @@ export default function UsernameRegistration() {
 
   const handleRegister = async () => {
     if (!canRegister) return
+
+    const toastId = toast.loading("Registering username...")
+
     try {
       await registerUsername()
+      toast.success(`Username @${username} registered successfully!`, { id: toastId })
     } catch (err) {
       console.error("Failed to register username:", err)
+      toast.error("Failed to register username. Please try again.", { id: toastId })
     }
   }
 

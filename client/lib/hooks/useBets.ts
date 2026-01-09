@@ -55,6 +55,19 @@ export function useBetDetails(betAddress: string) {
         params: [],
       })
 
+      // Fetch funding status separately
+      const creatorFunded = await readContract({
+        contract,
+        method: "function creatorFunded() view returns (bool)",
+        params: [],
+      })
+
+      const opponentFunded = await readContract({
+        contract,
+        method: "function opponentFunded() view returns (bool)",
+        params: [],
+      })
+
       // Transform to UI format - details is a struct object
       return {
         address: betAddress,
@@ -67,8 +80,8 @@ export function useBetDetails(betAddress: string) {
         expiresAt: BigInt(details.expiresAt?.toString() ?? "0"),
         state: Number(details.state ?? 0), // 0=Created, 1=Active, 2=AwaitingResolution, 3=InDispute, 4=Resolved, 5=Cancelled
         outcome: Number(details.outcome ?? 0), // 0=Pending, 1=CreatorWins, 2=OpponentWins, 3=Draw
-        creatorFunded: false, // Will fetch separately
-        opponentFunded: false, // Will fetch separately
+        creatorFunded: Boolean(creatorFunded),
+        opponentFunded: Boolean(opponentFunded),
         tags: (details.tags as string[]) || [],
       }
     },
@@ -113,6 +126,19 @@ export function useBatchBetDetails(addresses: string[]) {
                 params: [],
               })
 
+              // Fetch funding status
+              const creatorFunded = await readContract({
+                contract,
+                method: "function creatorFunded() view returns (bool)",
+                params: [],
+              })
+
+              const opponentFunded = await readContract({
+                contract,
+                method: "function opponentFunded() view returns (bool)",
+                params: [],
+              })
+
               return {
                 address: addr,
                 creator: details.creator as string,
@@ -124,8 +150,8 @@ export function useBatchBetDetails(addresses: string[]) {
                 expiresAt: BigInt(details.expiresAt?.toString() ?? "0"),
                 state: Number(details.state ?? 0),
                 outcome: Number(details.outcome ?? 0),
-                creatorFunded: false, // Will fetch separately
-                opponentFunded: false, // Will fetch separately
+                creatorFunded: Boolean(creatorFunded),
+                opponentFunded: Boolean(opponentFunded),
                 tags: (details.tags as string[]) || [],
               }
             } catch (error) {

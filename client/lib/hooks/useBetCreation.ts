@@ -71,7 +71,7 @@ export function useUSDCApproval(spenderAddress: string) {
   const usdc = useUSDCContract()
   const { mutate: sendTransaction, data: transactionResult, isPending } = useSendTransaction()
 
-  const approve = (amount: string) => {
+  const approve = (amount: string, options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
     console.log("approve called with amount:", amount, "spender:", spenderAddress)
 
     try {
@@ -86,14 +86,18 @@ export function useUSDCApproval(spenderAddress: string) {
 
       console.log("Approval transaction prepared:", transaction)
 
-      sendTransaction(transaction, {
-        onSuccess: (result) => {
+      const txOptions: any = {
+        onSuccess: (result: any) => {
           console.log("Approval successful:", result)
+          if (options?.onSuccess) options.onSuccess(result)
         },
-        onError: (error) => {
+        onError: (error: any) => {
           console.error("Approval error:", error)
+          if (options?.onError) options.onError(error)
         },
-      })
+      }
+
+      sendTransaction(transaction, txOptions)
     } catch (err) {
       console.error("Error in approve:", err)
       throw err

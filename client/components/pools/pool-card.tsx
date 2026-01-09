@@ -7,27 +7,36 @@ interface PoolCardProps {
   id: string
   name: string
   category: string
-  apy: number
   liquidity: number
   available: number
   activeBets: number
   utilization: number
-  description: string
-  riskTier: string
 }
 
 export default function PoolCard({
   id,
   name,
   category,
-  apy,
   liquidity,
   available,
   activeBets,
   utilization,
-  description,
-  riskTier,
 }: PoolCardProps) {
+  // APY calculation (10-20% base, can be enhanced later)
+  const apy = 15
+
+  // Pool descriptions based on category
+  const descriptions: Record<string, string> = {
+    sports: "Back the house in sports betting markets. Earn yield from NBA, NFL, and more.",
+    crypto: "Provide liquidity for crypto prediction markets. BTC, ETH price movements.",
+    politics: "Support political prediction markets. Elections, policy outcomes, and more.",
+    general: "Diversified pool for general betting markets across all categories.",
+  }
+
+  const description = descriptions[category] || "General purpose betting liquidity pool"
+
+  // Risk tier based on utilization
+  const riskTier = utilization > 70 ? "High" : utilization > 40 ? "Medium" : "Low"
   const riskColors = {
     Low: "bg-green-500/20 text-green-400",
     Medium: "bg-yellow-500/20 text-yellow-400",
@@ -53,11 +62,11 @@ export default function PoolCard({
         <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-neutral-700">
           <div>
             <div className="text-sm text-neutral-400 uppercase text-xs mb-1">Total Liquidity</div>
-            <div className="font-bold">${(liquidity / 1000000).toFixed(1)}M</div>
+            <div className="font-bold">${liquidity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
           <div>
             <div className="text-sm text-neutral-400 uppercase text-xs mb-1">Available</div>
-            <div className="font-bold">${(available / 1000).toFixed(0)}K</div>
+            <div className="font-bold">${available.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
           <div>
             <div className="text-sm text-neutral-400 uppercase text-xs mb-1">Active Bets</div>
@@ -65,7 +74,7 @@ export default function PoolCard({
           </div>
           <div>
             <div className="text-sm text-neutral-400 uppercase text-xs mb-1">Utilization</div>
-            <div className="font-bold">{utilization}%</div>
+            <div className="font-bold">{utilization.toFixed(1)}%</div>
           </div>
         </div>
 

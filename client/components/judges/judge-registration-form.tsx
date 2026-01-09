@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useJudgeRegistration, useJudgeRegistryConfig } from "@/lib/hooks/useJudgeRegistry"
 import { Shield, AlertCircle, CheckCircle, Clock } from "lucide-react"
+import { toast } from "sonner"
 
 export function JudgeRegistrationForm() {
   const [currentStep, setCurrentStep] = useState(0)
   const [stakeAmount, setStakeAmount] = useState("")
-  
+
   const { config, isLoading: isConfigLoading } = useJudgeRegistryConfig()
   const {
     registerJudge,
@@ -23,9 +24,16 @@ export function JudgeRegistrationForm() {
 
   useEffect(() => {
     if (isSuccess) {
+      toast.success(`Successfully registered as judge with ${stakeAmount} MNT staked!`)
       setCurrentStep(3)
     }
-  }, [isSuccess])
+  }, [isSuccess, stakeAmount])
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Failed to register as judge. Please try again.")
+    }
+  }, [error])
 
   const steps = [
     { title: "Requirements", icon: AlertCircle },
@@ -33,6 +41,11 @@ export function JudgeRegistrationForm() {
     { title: "Confirm", icon: CheckCircle },
     { title: "Success", icon: CheckCircle },
   ]
+
+  const handleRegisterClick = () => {
+    toast.loading("Registering as judge...")
+    registerJudge()
+  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -100,7 +113,7 @@ export function JudgeRegistrationForm() {
               <Button onClick={() => setCurrentStep(1)} variant="outline" className="flex-1 bg-transparent" disabled={isPending || isConfirming}>
                 Back
               </Button>
-              <Button onClick={registerJudge} className="flex-1" disabled={isPending || isConfirming}>
+              <Button onClick={handleRegisterClick} className="flex-1" disabled={isPending || isConfirming}>
                 {isPending || isConfirming ? <Clock className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
                 {isPending ? "Confirm in Wallet..." : isConfirming ? "Registering..." : "Register as Judge"}
               </Button>

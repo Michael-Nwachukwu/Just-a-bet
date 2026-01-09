@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { validateBetWithAI, AIValidationResult, AVAILABLE_POOLS } from "@/lib/groq-ai"
+import { validateBetWithAI, AIValidationResult, AVAILABLE_POOLS, getPoolCategoryKey } from "@/lib/groq-ai"
 import { useCreateBet, useUSDCApproval, useUSDCAllowance, useUSDCBalance } from "@/lib/hooks/useBetCreation"
 import { useContractAddresses } from "@/lib/hooks/useContracts"
 import { durationToSeconds, formatUSDC } from "@/lib/utils"
+import { toast } from "sonner"
 
 type Step = "details" | "opponent" | "settings" | "ai-validation" | "review"
 
@@ -123,14 +124,21 @@ export default function CreateBetPage() {
 
   const handleApprove = async () => {
     if (!formData.stakeAmount) return
-    await approve(formData.stakeAmount)
-    await refetchAllowance()
+    const toastId = toast.loading("Approving USDC spending...")
+
+    try {
+      await approve(formData.stakeAmount)
+      await refetchAllowance()
+      toast.success("USDC approved successfully!", { id: toastId })
+    } catch (error) {
+      toast.error("Failed to approve USDC", { id: toastId })
+    }
   }
 
   const handleCreateBet = async () => {
     console.log("handleCreateBet")
     if (!isConnected) {
-      alert("Please connect your wallet first")
+      toast.error("Please connect your wallet first")
       return
     }
 
@@ -139,14 +147,37 @@ export default function CreateBetPage() {
 
     console.log("opponentIdentifier", opponentIdentifier)
 
-    await createBet({
-      opponentIdentifier,
-      stakeAmount: formData.stakeAmount,
-      description: formData.description,
-      outcomeDescription: formData.outcomeCriteria,
-      duration: durationInSeconds,
-      tags: formData.tags,
-    })
+    // For house bets, prepend the category key as the first tag
+    // The smart contract uses the first tag to select the pool via poolFactory.getPoolByCategory()
+    let tagsToUse = formData.tags
+
+    if (formData.opponentType === "house" && aiValidation?.recommendedPool) {
+      const categoryKey = getPoolCategoryKey(aiValidation.recommendedPool)
+      if (categoryKey) {
+        // Prepend category key as first tag
+        tagsToUse = [categoryKey, ...formData.tags]
+        console.log("House bet - using category key as first tag:", categoryKey)
+      } else {
+        toast.error("Failed to map AI pool recommendation to category key")
+        return
+      }
+    }
+
+    const toastId = toast.loading("Creating bet...")
+
+    try {
+      await createBet({
+        opponentIdentifier,
+        stakeAmount: formData.stakeAmount,
+        description: formData.description,
+        outcomeDescription: formData.outcomeCriteria,
+        duration: durationInSeconds,
+        tags: tagsToUse,
+      })
+      toast.success("Bet created successfully!", { id: toastId })
+    } catch (error) {
+      toast.error("Failed to create bet", { id: toastId })
+    }
   }
 
   const getRiskColor = (score: number) => {

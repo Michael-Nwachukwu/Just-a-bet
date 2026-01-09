@@ -50,6 +50,7 @@ export default function Navbar() {
               wallets={wallets}
               chain={mantleSepolia}
               theme="dark"
+              autoConnect={true}
               connectButton={{
                 label: "Connect Wallet",
                 className: "!bg-transparent !border !border-neutral-700 !text-neutral-100 hover:!border-orange-500 hover:!text-orange-500 !transition-colors",
@@ -90,6 +91,7 @@ export default function Navbar() {
                 wallets={wallets}
                 chain={mantleSepolia}
                 theme="dark"
+                autoConnect={true}
                 connectButton={{
                   label: "Connect Wallet",
                   className: "!w-full",

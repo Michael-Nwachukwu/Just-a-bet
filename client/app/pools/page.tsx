@@ -105,7 +105,8 @@ export default function PoolsPage() {
         ) : pools && pools.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {pools.map((pool) => {
-              if (!pool) return null
+              // Extra safety check for poolInfo
+              if (!pool || !pool.poolInfo || !pool.poolInfo.address) return null
 
               return (
                 <PoolCard

@@ -152,7 +152,7 @@ Input: "Bitcoin will be above $100k by end of 2026" (bet created Jan 2026, 365 d
 {
   "isValid": true,
   "riskScore": 75,
-  "recommendedPool": "Crypto Pool - Price Predictions",
+  "recommendedPool": "Crypto Pool - BTC",
   "confidence": 85,
   "reasoning": "ACCEPTABLE RISK FOR HOUSE. Long duration (365 days) reduces manipulation risk. Price target ($100k) is significantly different from current price, making outcome uncertain. Verifiable via major exchanges. Fair odds for both sides.",
   "warnings": ["Crypto volatility inherent", "Long-term price prediction"]
@@ -214,60 +214,59 @@ Now evaluate the bet above and respond with JSON only:`
   }
 }
 
-// Example available pools configuration
+// Available pools configuration - matches deployed contracts on Mantle Sepolia
+// These are the ONLY pools that exist on-chain
 export const AVAILABLE_POOLS: PoolOption[] = [
   {
-    id: "sports-nba",
+    id: "sports",
     name: "Sports Pool - NBA",
     category: "Sports",
-    description: "NBA basketball games and player performance bets",
+    description: "Sports betting markets including NBA, NFL, soccer, and other athletic competitions",
     minStake: 10,
     maxStake: 10000,
-    targetAPY: 12,
+    targetAPY: 10,
   },
   {
-    id: "sports-soccer",
-    name: "Sports Pool - Soccer",
-    category: "Sports",
-    description: "International soccer matches and tournaments",
-    minStake: 10,
-    maxStake: 10000,
-    targetAPY: 12,
-  },
-  {
-    id: "crypto-price",
-    name: "Crypto Pool - Price Predictions",
+    id: "crypto",
+    name: "Crypto Pool - BTC",
     category: "Crypto",
-    description: "Cryptocurrency price movements (BTC, ETH, etc.)",
-    minStake: 50,
+    description: "Cryptocurrency price predictions and events (BTC, ETH, altcoins, halvings, etc.)",
+    minStake: 10,
     maxStake: 50000,
-    targetAPY: 15,
-  },
-  {
-    id: "crypto-events",
-    name: "Crypto Pool - Events",
-    category: "Crypto",
-    description: "Crypto events like halvings, ETF approvals, protocol upgrades",
-    minStake: 25,
-    maxStake: 25000,
-    targetAPY: 18,
-  },
-  {
-    id: "entertainment",
-    name: "Entertainment Pool",
-    category: "Entertainment",
-    description: "Movies, TV shows, awards ceremonies, box office predictions",
-    minStake: 5,
-    maxStake: 5000,
     targetAPY: 10,
   },
   {
     id: "politics",
     name: "Politics Pool",
     category: "Politics",
-    description: "Elections, policy decisions, government actions",
-    minStake: 20,
+    description: "Political events including elections, policy decisions, government actions",
+    minStake: 10,
     maxStake: 20000,
-    targetAPY: 14,
+    targetAPY: 10,
+  },
+  {
+    id: "general",
+    name: "General Pool",
+    category: "General",
+    description: "Miscellaneous verifiable bets that don't fit other categories (weather, entertainment, business, etc.)",
+    minStake: 10,
+    maxStake: 10000,
+    targetAPY: 10,
   },
 ]
+
+/**
+ * Map AI-recommended pool name to category key for smart contract
+ * The smart contract uses poolFactory.getPoolByCategory(categoryKey)
+ * Category keys are in format "Category-Subcategory" (e.g., "Sports-NBA")
+ */
+export function getPoolCategoryKey(poolName: string): string | null {
+  const poolMap: Record<string, string> = {
+    "Sports Pool - NBA": "Sports-NBA",
+    "Crypto Pool - BTC": "Crypto-BTC",
+    "Politics Pool": "Politics-General",
+    "General Pool": "General-Misc",
+  }
+
+  return poolMap[poolName] || null
+}

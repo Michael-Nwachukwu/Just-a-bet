@@ -14,6 +14,7 @@ import {
   useWithdrawalStatus,
 } from "@/lib/hooks/useJudgeRegistry"
 import { ArrowUp, ArrowDown, Clock, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
 
 export function JudgeStakingPanel() {
   const account = useActiveAccount()
@@ -39,8 +40,60 @@ export function JudgeStakingPanel() {
   } = useCompleteWithdrawal()
 
   const handleIncreaseStake = () => {
-    if (!stakeAmount || parseFloat(stakeAmount) <= 0) return
-    increaseStake()
+    if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
+      toast.error("Please enter a valid stake amount")
+      return
+    }
+
+    const toastId = toast.loading("Increasing stake...")
+
+    increaseStake({
+      onSuccess: () => {
+        toast.success(`Successfully increased stake by ${stakeAmount} MNT!`, { id: toastId })
+        setStakeAmount("")
+        setTimeout(() => refetchProfile(), 2000)
+      },
+      onError: (error: any) => {
+        console.error("Increase stake failed:", error)
+        toast.error("Failed to increase stake. Please try again.", { id: toastId })
+      }
+    })
+  }
+
+  const handleRequestWithdrawal = () => {
+    const toastId = toast.loading("Requesting withdrawal...")
+
+    requestWithdrawal({
+      onSuccess: () => {
+        toast.success("Withdrawal requested! Lock period has started.", { id: toastId })
+        setTimeout(() => {
+          refetchWithdrawal()
+          refetchProfile()
+        }, 2000)
+      },
+      onError: (error: any) => {
+        console.error("Request withdrawal failed:", error)
+        toast.error("Failed to request withdrawal. Please try again.", { id: toastId })
+      }
+    })
+  }
+
+  const handleCompleteWithdrawal = () => {
+    const toastId = toast.loading("Completing withdrawal...")
+
+    completeWithdrawal({
+      onSuccess: () => {
+        toast.success("Withdrawal completed successfully!", { id: toastId })
+        setTimeout(() => {
+          refetchWithdrawal()
+          refetchProfile()
+        }, 2000)
+      },
+      onError: (error: any) => {
+        console.error("Complete withdrawal failed:", error)
+        toast.error("Failed to complete withdrawal. Please try again.", { id: toastId })
+      }
+    })
   }
 
   const formatTimeRemaining = (seconds: bigint) => {
@@ -159,7 +212,7 @@ export function JudgeStakingPanel() {
               </div>
 
               <Button
-                onClick={completeWithdrawal}
+                onClick={handleCompleteWithdrawal}
                 disabled={isCompletingWithdrawal}
                 className="w-full bg-red-500 hover:bg-red-600"
               >
@@ -220,7 +273,7 @@ export function JudgeStakingPanel() {
               </div>
 
               <Button
-                onClick={requestWithdrawal}
+                onClick={handleRequestWithdrawal}
                 disabled={isRequestingWithdrawal}
                 variant="outline"
                 className="w-full bg-transparent border-red-500/30 hover:bg-red-500/10 text-red-400"

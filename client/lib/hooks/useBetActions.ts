@@ -2,6 +2,7 @@ import { useSendTransaction } from "thirdweb/react"
 import { prepareContractCall, getContract } from "thirdweb"
 import { client, mantleSepolia } from "@/lib/thirdweb"
 import { ABIS } from "../contracts/abis"
+import { useCallback } from "react"
 
 /**
  * Get bet contract instance
@@ -11,7 +12,7 @@ function getBetContract(betAddress: string) {
     client,
     chain: mantleSepolia,
     address: betAddress as `0x${string}`,
-    abi: ABIS.Bet,
+    abi: ABIS.Bet as any,
   })
 }
 
@@ -22,14 +23,21 @@ export function useAcceptBet(betAddress: string) {
   const contract = getBetContract(betAddress)
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const acceptBet = () => {
+  const acceptBet = useCallback((options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
     const transaction = prepareContractCall({
       contract,
       method: "function acceptBet()",
       params: [],
     })
-    sendTransaction(transaction)
-  }
+    sendTransaction(transaction, {
+      onSuccess: (result) => {
+        if (options?.onSuccess) options.onSuccess(result)
+      },
+      onError: (error) => {
+        if (options?.onError) options.onError(error)
+      },
+    })
+  }, [contract, sendTransaction])
 
   return {
     acceptBet,
@@ -42,29 +50,51 @@ export function useAcceptBet(betAddress: string) {
 }
 
 /**
- * Hook to fund stake (creator or opponent)
+ * Hook to fund creator stake
  */
-export function useFundBet(betAddress: string) {
+export function useFundCreatorStake(betAddress: string) {
   const contract = getBetContract(betAddress)
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const fundStake = () => {
+  const fundCreator = useCallback((options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
+    console.log("fundCreator called for bet:", betAddress)
+
     const transaction = prepareContractCall({
       contract,
-      method: "function fundStake()",
+      method: "function fundCreator()",
       params: [],
     })
-    sendTransaction(transaction)
-  }
+
+    console.log("Transaction prepared:", transaction)
+
+    sendTransaction(transaction, {
+      onSuccess: (result) => {
+        console.log("Fund creator successful:", result)
+        if (options?.onSuccess) options.onSuccess(result)
+      },
+      onError: (error) => {
+        console.error("Fund creator error:", error)
+        if (options?.onError) options.onError(error)
+      },
+    })
+  }, [contract, sendTransaction, betAddress])
 
   return {
-    fundStake,
+    fundCreator,
     isPending,
     isConfirming: isPending,
     isSuccess: !!transactionResult && !error,
     hash: transactionResult?.transactionHash,
     error,
   }
+}
+
+/**
+ * Legacy hook name for backwards compatibility
+ * @deprecated Use useFundCreatorStake instead
+ */
+export function useFundBet(betAddress: string) {
+  return useFundCreatorStake(betAddress)
 }
 
 /**

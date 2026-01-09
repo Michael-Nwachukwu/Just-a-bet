@@ -43,9 +43,10 @@ export function useIncreaseStake(additionalStake: string) {
   const contract = useJudgeRegistryContract()
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const increaseStake = async () => {
+  const increaseStake = (callbacks?: { onSuccess?: () => void; onError?: (error: any) => void }) => {
     if (!additionalStake || parseFloat(additionalStake) <= 0) {
-      throw new Error("Invalid stake amount")
+      callbacks?.onError?.(new Error("Invalid stake amount"))
+      return
     }
 
     const transaction = prepareContractCall({
@@ -55,7 +56,16 @@ export function useIncreaseStake(additionalStake: string) {
       value: toWei(additionalStake),
     })
 
-    sendTransaction(transaction)
+    sendTransaction(transaction, {
+      onSuccess: () => {
+        console.log("Increase stake successful")
+        callbacks?.onSuccess?.()
+      },
+      onError: (error) => {
+        console.error("Increase stake failed:", error)
+        callbacks?.onError?.(error)
+      },
+    })
   }
 
   return {
@@ -73,14 +83,23 @@ export function useRequestWithdrawal() {
   const contract = useJudgeRegistryContract()
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const requestWithdrawal = () => {
+  const requestWithdrawal = (callbacks?: { onSuccess?: () => void; onError?: (error: any) => void }) => {
     const transaction = prepareContractCall({
       contract,
       method: "function requestWithdrawal()",
       params: [],
     })
 
-    sendTransaction(transaction)
+    sendTransaction(transaction, {
+      onSuccess: () => {
+        console.log("Request withdrawal successful")
+        callbacks?.onSuccess?.()
+      },
+      onError: (error) => {
+        console.error("Request withdrawal failed:", error)
+        callbacks?.onError?.(error)
+      },
+    })
   }
 
   return {
@@ -98,14 +117,23 @@ export function useCompleteWithdrawal() {
   const contract = useJudgeRegistryContract()
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const completeWithdrawal = () => {
+  const completeWithdrawal = (callbacks?: { onSuccess?: () => void; onError?: (error: any) => void }) => {
     const transaction = prepareContractCall({
       contract,
       method: "function completeWithdrawal()",
       params: [],
     })
 
-    sendTransaction(transaction)
+    sendTransaction(transaction, {
+      onSuccess: () => {
+        console.log("Complete withdrawal successful")
+        callbacks?.onSuccess?.()
+      },
+      onError: (error) => {
+        console.error("Complete withdrawal failed:", error)
+        callbacks?.onError?.(error)
+      },
+    })
   }
 
   return {
