@@ -116,6 +116,12 @@ contract CDOPool is Ownable, ReentrancyGuard {
         uint256 timestamp
     );
 
+    event BetFunded(
+        address indexed betContract,
+        uint256 amount,
+        uint256 timestamp
+    );
+
     event YieldUpdated(
         address indexed user,
         uint256 positionId,
@@ -497,6 +503,27 @@ contract CDOPool is Ownable, ReentrancyGuard {
         delete matchedBetAmounts[betContract];
 
         emit BetSettled(betContract, matchedAmount, profit, won, block.timestamp);
+    }
+
+    /**
+     * @notice Transfer funds from pool to bet contract for house-side funding
+     * @param betContract Address of bet contract to fund
+     * @param amount Amount to transfer
+     * @dev Only callable by the bet contract itself after validation
+     */
+    function transferFundsForBet(address betContract, uint256 amount) external nonReentrant {
+        // Verify this bet was actually matched by us
+        uint256 matchedAmount = matchedBetAmounts[betContract];
+        require(matchedAmount > 0, "Bet not matched by this pool");
+        require(amount == matchedAmount, "Amount mismatch");
+
+        // Only the bet contract itself can call this
+        require(msg.sender == betContract, "Only bet contract can call");
+
+        // Transfer USDC from pool to bet contract
+        usdc.safeTransfer(betContract, amount);
+
+        emit BetFunded(betContract, amount, block.timestamp);
     }
 
     // ============ Internal Functions - Yield Calculation ============

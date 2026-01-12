@@ -5,8 +5,8 @@ BetYieldVault - 0x12ccF0F4A22454d53aBdA56a796a08e93E947256
 BetRiskValidator - 0x4d0884D03f2fA409370D0F97c6AbC4dA4A8F03d6
 JudgeRegistry - 0x9f3eB17a20a4E57Ed126F34061b0E40dF3a4f5C2
 DisputeManager - 0x3335BaEEDdD1Cc77B8Ab9acBF862764812337a3F
-CDOPoolFactory - 0xBc61e19874B98D2429fABc645635439dBaA0Adde
-BetFactory - 0x76b27dFb0408Baa19b3F41469b123c5bBfd56047
+CDOPoolFactory - 0xc616918154D7a9dB5D78480d1d53820d4423b298
+BetFactory - 0x07ecE77248D4E3f295fdFaeC1C86e257098A434a
 
 
 
@@ -14,20 +14,20 @@ BetFactory - 0x76b27dFb0408Baa19b3F41469b123c5bBfd56047
 Creating category-specific pools...
      Creating Sports Pool - NBA...
        Pool ID: 0
-       Pool Address: 0x1E8d4BF45aB7EF0B7e4a7d46da2290fEa761F973
-       Token Address: 0xd34F2B8a2cd3f2B4b401c2EB612676277774A42B
+       Pool Address: 0x2b2E21596A22f6Ab273E41F4BB28Dcc1D0be6D85
+       Token Address: 0xDb02a4D36c750FE94986ac4E9B736EA31ac9B32e
      Creating Crypto Pool - BTC...
        Pool ID: 1
-       Pool Address: 0x6651aE6442b6CF752f30860cf8725b24b086295f
-       Token Address: 0x85Aa34014C68eE61Fe838e30f685A13339fAEeFd
+       Pool Address: 0xd0B0aF8488D7000c6658a0E7A50566dAa6B6E631
+       Token Address: 0xEb3aE9248B253e4dEbfd2A1A822cCB129D618bF5
      Creating Politics Pool...
        Pool ID: 2
-       Pool Address: 0x6a6b4bF68F3C87532cF216407d23FeC5a620398E
-       Token Address: 0x20403443a5b093523439ca6feF4ccF123B9360B9
+       Pool Address: 0xb8886E5638d17Fe6161976FD4Ca27d2DaAC9029f
+       Token Address: 0xA8586243CBf327B4c8Fd061B2a1F2B0CCD495297
      Creating General Pool...
        Pool ID: 3
-       Pool Address: 0xE5a49B55996624a4521a6325a7Df080074f32D22
-       Token Address: 0xd3e78BF26C938B21e361b8073C147be71b53a436
+       Pool Address: 0x8Ea7a72e5deF4323e6DF86c668F88e4aBc5E2f92
+       Token Address: 0x330cF1F85e0c97A5FA06BF49Eaf24947beE1a799
 
 
 

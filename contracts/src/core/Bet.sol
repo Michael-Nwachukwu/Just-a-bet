@@ -66,11 +66,13 @@ contract Bet is ReentrancyGuard {
     BetYieldVault public immutable yieldVault;
     UsernameRegistry public immutable usernameRegistry;
     address public disputeManager; // Set by factory after deployment
+    address public immutable factory; // BetFactory address
 
     bool public creatorFunded;
     bool public opponentFunded;
 
     uint256 public constant DISPUTE_WINDOW = 24 hours;
+    address public constant HOUSE_ADDRESS = address(0x486F757365); // "House" in hex
 
     // ============ Events ============
 
@@ -147,6 +149,7 @@ contract Bet is ReentrancyGuard {
         usdc = IERC20(_usdc);
         yieldVault = BetYieldVault(_yieldVault);
         usernameRegistry = UsernameRegistry(_usernameRegistry);
+        factory = msg.sender; // Factory is the deployer
 
         betDetails = BetDetails({
             creator: _creator,
@@ -190,6 +193,11 @@ contract Bet is ReentrancyGuard {
         usdc.safeTransferFrom(msg.sender, address(this), betDetails.stakeAmount);
 
         emit BetFunded(msg.sender, betDetails.stakeAmount, block.timestamp);
+
+        // If opponent is HOUSE, automatically fund from pool
+        if (betDetails.opponent == HOUSE_ADDRESS && !opponentFunded) {
+            _fundHouseSide();
+        }
 
         // If both funded, activate bet and deposit to vault
         if (opponentFunded) {
@@ -322,6 +330,33 @@ contract Bet is ReentrancyGuard {
     }
 
     // ============ Internal Functions ============
+
+    /**
+     * @dev Fund house side from the matched pool
+     * @dev Called automatically when creator funds their stake for house bets
+     */
+    function _fundHouseSide() internal {
+        require(betDetails.opponent == HOUSE_ADDRESS, "Not a house bet");
+        require(!opponentFunded, "House already funded");
+
+        // Get the pool that matched this bet from factory
+        (bool success, bytes memory data) = factory.call(
+            abi.encodeWithSignature("getMatchedPool(address)", address(this))
+        );
+        require(success, "Failed to get matched pool");
+        address poolAddress = abi.decode(data, (address));
+        require(poolAddress != address(0), "Pool not found");
+
+        // Call the pool's transferFundsForBet function
+        // Pool will transfer USDC to this contract
+        (bool transferSuccess,) = poolAddress.call(
+            abi.encodeWithSignature("transferFundsForBet(address,uint256)", address(this), betDetails.stakeAmount)
+        );
+        require(transferSuccess, "Pool funding failed");
+
+        opponentFunded = true;
+        emit BetFunded(HOUSE_ADDRESS, betDetails.stakeAmount, block.timestamp);
+    }
 
     /**
      * @dev Activate bet and deposit funds to yield vault

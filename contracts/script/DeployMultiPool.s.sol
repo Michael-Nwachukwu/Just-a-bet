@@ -26,8 +26,8 @@ contract DeployMultiPool is Script {
     address constant USDC = 0xA1103E6490ab174036392EbF5c798C9DaBAb24EE;
     address constant YIELD_VAULT = 0x12ccF0F4A22454d53aBdA56a796a08e93E947256;
     address constant RISK_VALIDATOR = 0x4d0884D03f2fA409370D0F97c6AbC4dA4A8F03d6;
-    address constant BET_FACTORY = 0x76b27dFb0408Baa19b3F41469b123c5bBfd56047;
-    address constant CDO_POOL_FACTORY = 0xBc61e19874B98D2429fABc645635439dBaA0Adde;
+    address constant BET_FACTORY = 0x07ecE77248D4E3f295fdFaeC1C86e257098A434a;
+    address constant CDO_POOL_FACTORY = 0xc616918154D7a9dB5D78480d1d53820d4423b298;
 
     function run() external {
         // Get deployer private key from environment
@@ -48,6 +48,7 @@ contract DeployMultiPool is Script {
         console.log("   CDOPoolFactory address:", address(factory));
 
         // ============ Step 2: Create Category-Specific Pools ============
+        /*
         console.log("\n2. Creating category-specific pools...");
 
         // Sports Pool - NBA
@@ -133,6 +134,8 @@ contract DeployMultiPool is Script {
         console.log("     Pool ID:", generalPoolId);
         console.log("     Pool Address:", generalPool.poolAddress);
         console.log("     Token Address:", generalPool.tokenAddress);
+        */
+        uint256 generalPoolId = 3; // Hardcoded from deployed-addresses.m
 
         // ============ Step 3: Configure BetFactory ============
         console.log("\n3. Configuring BetFactory...");
@@ -159,9 +162,10 @@ contract DeployMultiPool is Script {
 
         // ============ Deployment Summary ============
         console.log("\n==============================================");
-        console.log("DEPLOYMENT SUMMARY");
+        console.log("CONFIGURATION SUMMARY");
         console.log("==============================================");
         console.log("CDOPoolFactory:", address(factory));
+        /*
         console.log("\nCreated Pools:");
         console.log("  [0] Sports-NBA:    ", nbaPool.poolAddress);
         console.log("      Token:         ", nbaPool.tokenAddress);
@@ -171,10 +175,11 @@ contract DeployMultiPool is Script {
         console.log("      Token:         ", politicsPool.tokenAddress);
         console.log("  [3] General:       ", generalPool.poolAddress);
         console.log("      Token:         ", generalPool.tokenAddress);
+        */
         console.log("\nBetFactory Config:");
         console.log("  Factory Set:       ", address(factory));
         console.log("  Default Pool ID:   ", generalPoolId);
-        console.log("  Authorized Pools:  ", allPools.length);
+        // console.log("  Authorized Pools:  ", allPools.length);
         console.log("==============================================");
 
         console.log("\nNext steps:");
@@ -183,11 +188,13 @@ contract DeployMultiPool is Script {
         console.log("3. Test pool creation and bet routing");
         console.log("4. Add liquidity to each pool");
         console.log("5. Create test bets in each category");
+        /*
         console.log("\nCategory Mapping:");
         console.log("  'Sports-NBA' -> Pool", nbaPoolId);
         console.log("  'Crypto-BTC' -> Pool", btcPoolId);
         console.log("  'Politics-Elections' -> Pool", politicsPoolId);
-        console.log("  'General-Misc' -> Pool", generalPoolId);
+        // console.log("  'General-Misc' -> Pool", generalPoolId);
+        */
         console.log("");
     }
 
