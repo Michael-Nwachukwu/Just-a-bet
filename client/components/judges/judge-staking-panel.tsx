@@ -229,7 +229,7 @@ export function JudgeStakingPanel() {
                 )}
               </Button>
             </>
-          ) : withdrawalStatus && withdrawalStatus.withdrawalRequestTime > 0n ? (
+          ) : withdrawalStatus && withdrawalStatus.withdrawalRequestTime > BigInt(0) ? (
             // Withdrawal requested, waiting for lock period
             <>
               <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">

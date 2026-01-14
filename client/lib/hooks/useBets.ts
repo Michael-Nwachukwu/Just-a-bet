@@ -45,7 +45,7 @@ export function useBetDetails(betAddress: string) {
         client,
         chain: mantleSepolia,
         address: betAddress as `0x${string}`,
-        abi: ABIS.Bet,
+        abi: ABIS.Bet as any,
       })
 
       // Thirdweb will use the ABI we provided to the contract
@@ -68,6 +68,13 @@ export function useBetDetails(betAddress: string) {
         params: [],
       })
 
+      // Fetch resolution data
+      const resolution = await readContract({
+        contract,
+        method: "function resolution() view returns (uint256 disputeWindowDuration, address declaredWinner, uint256 declaredAt, uint256 disputeDeadline)",
+        params: [],
+      })
+
       // Transform to UI format - details is a struct object
       return {
         address: betAddress,
@@ -83,6 +90,12 @@ export function useBetDetails(betAddress: string) {
         creatorFunded: Boolean(creatorFunded),
         opponentFunded: Boolean(opponentFunded),
         tags: (details.tags as string[]) || [],
+        resolution: {
+          disputeWindowDuration: Number(resolution[0] ?? 0),
+          declaredWinner: resolution[1] as string,
+          declaredAt: Number(resolution[2] ?? 0),
+          disputeDeadline: Number(resolution[3] ?? 0),
+        },
       }
     },
     enabled: !!betAddress && betAddress !== "0x0000000000000000000000000000000000000000",
@@ -116,7 +129,7 @@ export function useBatchBetDetails(addresses: string[]) {
                 client,
                 chain: mantleSepolia,
                 address: addr as `0x${string}`,
-                abi: ABIS.Bet,
+                abi: ABIS.Bet as any,
               })
 
               // Thirdweb will use the ABI we provided to the contract

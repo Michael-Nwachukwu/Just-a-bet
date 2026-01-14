@@ -257,15 +257,15 @@ export const AVAILABLE_POOLS: PoolOption[] = [
 
 /**
  * Map AI-recommended pool name to category key for smart contract
- * The smart contract uses poolFactory.getPoolByCategory(categoryKey)
- * Category keys are in format "Category-Subcategory" (e.g., "Sports-NBA")
+ * BetRiskValidator validates using base category names (Sports, Crypto, Politics, General)
+ * NOT subcategories like "Sports-NBA" or "General-Misc"
  */
 export function getPoolCategoryKey(poolName: string): string | null {
   const poolMap: Record<string, string> = {
-    "Sports Pool - NBA": "Sports-NBA",
-    "Crypto Pool - BTC": "Crypto-BTC",
-    "Politics Pool": "Politics-General",
-    "General Pool": "General-Misc",
+    "Sports Pool - NBA": "Sports",
+    "Crypto Pool - BTC": "Crypto",
+    "Politics Pool": "Politics",
+    "General Pool": "General",
   }
 
   return poolMap[poolName] || null

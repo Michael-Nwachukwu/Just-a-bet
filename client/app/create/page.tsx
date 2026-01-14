@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { validateBetWithAI, AIValidationResult, AVAILABLE_POOLS, getPoolCategoryKey } from "@/lib/groq-ai"
 import { useCreateBet, useUSDCApproval, useUSDCAllowance, useUSDCBalance } from "@/lib/hooks/useBetCreation"
 import { useContractAddresses } from "@/lib/hooks/useContracts"
+import { useAllPoolsStats } from "@/lib/hooks/usePools"
 import { durationToSeconds, formatUSDC } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -44,6 +45,7 @@ export default function CreateBetPage() {
   )
   const { allowance, refetch: refetchAllowance } = useUSDCAllowance(address, contractAddresses.betFactory)
   const { balance: usdcBalance } = useUSDCBalance(address)
+  const { pools: allPools } = useAllPoolsStats()
 
   const handleAddTag = () => {
     if (currentTag && formData.tags.length < 5) {
@@ -143,7 +145,7 @@ export default function CreateBetPage() {
     }
 
     const durationInSeconds = durationToSeconds(Number(formData.duration), formData.durationUnit)
-    const opponentIdentifier = formData.opponentType === "house" ? "house" : formData.opponentName
+    const opponentIdentifier = formData.opponentType === "house" ? "HOUSE" : formData.opponentName
 
     console.log("opponentIdentifier", opponentIdentifier)
 
@@ -175,8 +177,25 @@ export default function CreateBetPage() {
         tags: tagsToUse,
       })
       toast.success("Bet created successfully!", { id: toastId })
-    } catch (error) {
-      toast.error("Failed to create bet", { id: toastId })
+    } catch (error: any) {
+      console.error("Bet creation error:", error)
+
+      // Parse error message for user-friendly display
+      const errorMessage = error?.message || error?.toString() || ""
+
+      if (errorMessage.includes("0xb79fbb6e") || errorMessage.includes("InsufficientPoolLiquidity")) {
+        const poolName = aiValidation?.recommendedPool || "selected pool"
+        toast.error(
+          `Insufficient liquidity in ${poolName}. Please deposit USDC to the pool first or try a different bet category.`,
+          { id: toastId, duration: 6000 }
+        )
+      } else if (errorMessage.includes("InsufficientAllowance")) {
+        toast.error("Please approve USDC spending first", { id: toastId })
+      } else if (errorMessage.includes("InsufficientBalance")) {
+        toast.error("Insufficient USDC balance", { id: toastId })
+      } else {
+        toast.error("Failed to create bet. Please try again.", { id: toastId })
+      }
     }
   }
 
@@ -494,10 +513,46 @@ export default function CreateBetPage() {
                     </div>
 
                     {aiValidation.recommendedPool ? (
-                      <div className="bg-white bg-opacity-50 p-3 rounded-lg">
-                        <span className="font-semibold">✓ Recommended Pool: </span>
-                        <span className="font-bold">{aiValidation.recommendedPool}</span>
-                      </div>
+                      <>
+                        <div className="bg-white bg-opacity-50 p-3 rounded-lg">
+                          <span className="font-semibold">✓ Recommended Pool: </span>
+                          <span className="font-bold">{aiValidation.recommendedPool}</span>
+                        </div>
+
+                        {/* Check pool liquidity */}
+                        {(() => {
+                          const pool = allPools?.find(p => p?.poolInfo?.name === aiValidation.recommendedPool)
+                          const stakeAmount = Number(formData.stakeAmount) || 0
+                          const availableLiquidity = pool ? pool.availableLiquidityFormatted : 0
+
+                          if (pool && availableLiquidity < stakeAmount) {
+                            return (
+                              <div className="bg-red-100 border border-red-400 p-3 rounded-lg">
+                                <span className="font-semibold text-red-700">⚠️ Insufficient Pool Liquidity</span>
+                                <p className="text-sm mt-1 text-red-600">
+                                  The {aiValidation.recommendedPool} only has ${availableLiquidity.toFixed(2)} USDC available,
+                                  but your bet requires ${stakeAmount.toFixed(2)} USDC.
+                                  <br />
+                                  <strong>Action Required:</strong> Deposit USDC to the pool first or reduce your stake amount.
+                                </p>
+                              </div>
+                            )
+                          }
+
+                          if (pool && availableLiquidity > 0) {
+                            return (
+                              <div className="bg-green-100 border border-green-400 p-3 rounded-lg text-sm">
+                                <span className="font-semibold text-green-700">✓ Pool Liquidity Available</span>
+                                <p className="text-green-600 mt-1">
+                                  Pool has ${availableLiquidity.toFixed(2)} USDC available. Your ${stakeAmount.toFixed(2)} bet can be matched.
+                                </p>
+                              </div>
+                            )
+                          }
+
+                          return null
+                        })()}
+                      </>
                     ) : (
                       <div className="bg-red-100 p-3 rounded-lg">
                         <span className="font-semibold">✗ No Suitable Pool Found</span>

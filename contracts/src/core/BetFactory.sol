@@ -39,6 +39,7 @@ contract BetFactory is Ownable, ReentrancyGuard {
     // Track house-matched bets
     mapping(address => bool) public isHouseBet;  // bet => is matched with house
     address[] public houseBets;
+    mapping(address => address) public betToPool;  // bet => pool that matched it
 
     struct ProtocolConfig {
         uint256 minStakeAmount;          // Minimum USDC stake (6 decimals)
@@ -416,6 +417,9 @@ contract BetFactory is Ownable, ReentrancyGuard {
 
         // Match with selected pool immediately
         pool.matchBet(betContract, stakeAmount);
+
+        // Track which pool matched this bet (needed for auto-funding)
+        betToPool[betContract] = address(pool);
     }
 
     /**
@@ -555,5 +559,14 @@ contract BetFactory is Ownable, ReentrancyGuard {
      */
     function getHouseBetsCount() external view returns (uint256) {
         return houseBets.length;
+    }
+
+    /**
+     * @notice Get the pool that matched a specific bet
+     * @param betContract Address of the bet contract
+     * @return poolAddress Address of the pool, or address(0) if not a house bet
+     */
+    function getMatchedPool(address betContract) external view returns (address poolAddress) {
+        return betToPool[betContract];
     }
 }

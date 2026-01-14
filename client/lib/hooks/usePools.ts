@@ -36,7 +36,7 @@ export function usePoolStats(poolAddress: string) {
       try {
         const stats = await readContract({
           contract,
-          method: "stats",
+          method: "function stats() view returns (uint256 totalDeposits, uint256 totalBetsMatched, uint256 totalVolumeMatched, uint256 totalYieldDistributed, uint256 poolBalance, uint256 activeMatchedAmount, uint256 totalShares)",
           params: [],
         })
 
@@ -50,7 +50,7 @@ export function usePoolStats(poolAddress: string) {
         // Index 4: poolBalance
         // Index 5: activeMatchedAmount
         // Index 6: totalShares
-        const statsArray = stats as any[]
+        const statsArray = stats as unknown as any[]
         const totalDeposits = BigInt(statsArray[0]?.toString() ?? "0")
         const totalBetsMatched = BigInt(statsArray[1]?.toString() ?? "0")
         const totalYieldDistributed = BigInt(statsArray[3]?.toString() ?? "0")
@@ -116,12 +116,12 @@ export function useAllPoolsStats() {
         try {
           const stats = await readContract({
             contract,
-            method: "stats",
+            method: "function stats() view returns (uint256 totalDeposits, uint256 totalBetsMatched, uint256 totalVolumeMatched, uint256 totalYieldDistributed, uint256 poolBalance, uint256 activeMatchedAmount, uint256 totalShares)",
             params: [],
           })
 
           // stats returns an array: [totalDeposits, totalBetsMatched, totalVolumeMatched, totalYieldDistributed, poolBalance, activeMatchedAmount, totalShares]
-          const statsArray = stats as any[]
+          const statsArray = stats as unknown as any[]
           const totalDeposits = BigInt(statsArray[0]?.toString() ?? "0")
           const totalBetsMatched = BigInt(statsArray[1]?.toString() ?? "0")
           const totalYieldDistributed = BigInt(statsArray[3]?.toString() ?? "0")
@@ -178,7 +178,7 @@ export function useUserPositions(poolAddress: string, userAddress?: string) {
       try {
         const positions = await readContract({
           contract,
-          method: "getUserPositions",
+          method: "function getUserPositions(address user) external view returns ((uint256 depositAmount, uint256 shares, uint256 depositedAt, uint256 lockUntil, uint256 tier)[])",
           params: [addressToQuery],
         })
 
@@ -228,7 +228,7 @@ export function useAllUserPositions(userAddress?: string) {
           try {
             const positions = await readContract({
               contract,
-              method: "getUserPositions",
+              method: "function getUserPositions(address user) external view returns ((uint256 depositAmount, uint256 shares, uint256 depositedAt, uint256 lockUntil, uint256 tier)[])",
               params: [addressToQuery],
             })
 

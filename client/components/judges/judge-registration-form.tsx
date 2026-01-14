@@ -17,10 +17,11 @@ export function JudgeRegistrationForm() {
   const {
     registerJudge,
     isPending,
-    isConfirming,
-    isSuccess,
+    transactionResult,
     error,
   } = useJudgeRegistration(stakeAmount)
+
+  const isSuccess = !!transactionResult && !error
 
   useEffect(() => {
     if (isSuccess) {
@@ -110,12 +111,12 @@ export function JudgeRegistrationForm() {
               </div>
             </div>
             <div className="flex gap-3">
-              <Button onClick={() => setCurrentStep(1)} variant="outline" className="flex-1 bg-transparent" disabled={isPending || isConfirming}>
+              <Button onClick={() => setCurrentStep(1)} variant="outline" className="flex-1 bg-transparent" disabled={isPending}>
                 Back
               </Button>
-              <Button onClick={handleRegisterClick} className="flex-1" disabled={isPending || isConfirming}>
-                {isPending || isConfirming ? <Clock className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                {isPending ? "Confirm in Wallet..." : isConfirming ? "Registering..." : "Register as Judge"}
+              <Button onClick={handleRegisterClick} className="flex-1" disabled={isPending}>
+                {isPending ? <Clock className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                {isPending ? "Confirm in Wallet..." : "Register as Judge"}
               </Button>
             </div>
           </div>

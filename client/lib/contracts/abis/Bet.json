@@ -70,6 +70,19 @@
   },
   {
     "type": "function",
+    "name": "HOUSE_ADDRESS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "acceptBet",
     "inputs": [],
     "outputs": [],
@@ -169,6 +182,19 @@
   {
     "type": "function",
     "name": "disputeManager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "factory",
     "inputs": [],
     "outputs": [
       {

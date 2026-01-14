@@ -70,7 +70,7 @@ export default function MyBetsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={refetch}
+            onClick={() => refetch()}
             disabled={isLoading}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
@@ -168,11 +168,10 @@ export default function MyBetsPage() {
               ].map((filter) => (
                 <Badge
                   key={filter.value}
-                  className={`cursor-pointer transition-all ${
-                    wonFilter === filter.value
+                  className={`cursor-pointer transition-all ${wonFilter === filter.value
                       ? "bg-orange-500 text-black border-0"
                       : "bg-neutral-800 text-neutral-400 border border-neutral-700"
-                  }`}
+                    }`}
                   onClick={() => setWonFilter(filter.value)}
                 >
                   {filter.label}
