@@ -50,7 +50,7 @@ export function usePoolStats(poolAddress: string) {
         // Index 4: poolBalance
         // Index 5: activeMatchedAmount
         // Index 6: totalShares
-        const statsArray = stats as any[]
+        const statsArray = stats as unknown as any[]
         const totalDeposits = BigInt(statsArray[0]?.toString() ?? "0")
         const totalBetsMatched = BigInt(statsArray[1]?.toString() ?? "0")
         const totalYieldDistributed = BigInt(statsArray[3]?.toString() ?? "0")
@@ -121,7 +121,7 @@ export function useAllPoolsStats() {
           })
 
           // stats returns an array: [totalDeposits, totalBetsMatched, totalVolumeMatched, totalYieldDistributed, poolBalance, activeMatchedAmount, totalShares]
-          const statsArray = stats as any[]
+          const statsArray = stats as unknown as any[]
           const totalDeposits = BigInt(statsArray[0]?.toString() ?? "0")
           const totalBetsMatched = BigInt(statsArray[1]?.toString() ?? "0")
           const totalYieldDistributed = BigInt(statsArray[3]?.toString() ?? "0")

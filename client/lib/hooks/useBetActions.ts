@@ -104,15 +104,22 @@ export function useDeclareOutcome(betAddress: string) {
   const contract = getBetContract(betAddress)
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const declareOutcome = (outcome: number) => {
+  const declareOutcome = useCallback((outcome: number, options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
     // 1 = CreatorWins, 2 = OpponentWins, 3 = Draw
     const transaction = prepareContractCall({
       contract,
       method: "function declareOutcome(uint8)",
       params: [outcome],
     })
-    sendTransaction(transaction)
-  }
+    sendTransaction(transaction, {
+      onSuccess: (result) => {
+        if (options?.onSuccess) options.onSuccess(result)
+      },
+      onError: (error) => {
+        if (options?.onError) options.onError(error)
+      },
+    })
+  }, [contract, sendTransaction])
 
   return {
     declareOutcome,
@@ -125,23 +132,31 @@ export function useDeclareOutcome(betAddress: string) {
 }
 
 /**
- * Hook to agree with declared outcome
+ * Hook to finalize resolution after dispute window expires
+ * (This is how the other party "agrees" - by not disputing and waiting for window to expire)
  */
-export function useAgreeWithOutcome(betAddress: string) {
+export function useFinalizeResolution(betAddress: string) {
   const contract = getBetContract(betAddress)
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const agreeWithOutcome = () => {
+  const finalizeResolution = useCallback((options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
     const transaction = prepareContractCall({
       contract,
-      method: "function agreeWithOutcome()",
+      method: "function finalizeResolution()",
       params: [],
     })
-    sendTransaction(transaction)
-  }
+    sendTransaction(transaction, {
+      onSuccess: (result) => {
+        if (options?.onSuccess) options.onSuccess(result)
+      },
+      onError: (error) => {
+        if (options?.onError) options.onError(error)
+      },
+    })
+  }, [contract, sendTransaction])
 
   return {
-    agreeWithOutcome,
+    finalizeResolution,
     isPending,
     isConfirming: isPending,
     isSuccess: !!transactionResult && !error,
@@ -152,19 +167,27 @@ export function useAgreeWithOutcome(betAddress: string) {
 
 /**
  * Hook to raise a dispute
+ * Note: The reason is not stored on-chain in the Bet contract, but should be submitted to DisputeManager
  */
 export function useRaiseDispute(betAddress: string) {
   const contract = getBetContract(betAddress)
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const raiseDispute = (reason: string) => {
+  const raiseDispute = useCallback((options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
     const transaction = prepareContractCall({
       contract,
-      method: "function raiseDispute(string)",
-      params: [reason],
+      method: "function raiseDispute()",
+      params: [],
     })
-    sendTransaction(transaction)
-  }
+    sendTransaction(transaction, {
+      onSuccess: (result) => {
+        if (options?.onSuccess) options.onSuccess(result)
+      },
+      onError: (error) => {
+        if (options?.onError) options.onError(error)
+      },
+    })
+  }, [contract, sendTransaction])
 
   return {
     raiseDispute,
@@ -209,14 +232,21 @@ export function useClaimWinnings(betAddress: string) {
   const contract = getBetContract(betAddress)
   const { mutate: sendTransaction, data: transactionResult, isPending, error } = useSendTransaction()
 
-  const claimWinnings = () => {
+  const claimWinnings = useCallback((options?: { onSuccess?: (result: any) => void; onError?: (error: any) => void }) => {
     const transaction = prepareContractCall({
       contract,
       method: "function claimWinnings()",
       params: [],
     })
-    sendTransaction(transaction)
-  }
+    sendTransaction(transaction, {
+      onSuccess: (result) => {
+        if (options?.onSuccess) options.onSuccess(result)
+      },
+      onError: (error) => {
+        if (options?.onError) options.onError(error)
+      },
+    })
+  }, [contract, sendTransaction])
 
   return {
     claimWinnings,

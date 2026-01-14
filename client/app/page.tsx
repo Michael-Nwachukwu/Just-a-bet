@@ -124,7 +124,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-4xl font-bold mb-6">Ready to Start Betting?</h2>
           <Link href="/create">
-            <Button size="xl">Connect Wallet & Create Bet</Button>
+            <Button size="lg">Connect Wallet & Create Bet</Button>
           </Link>
         </div>
       </section>

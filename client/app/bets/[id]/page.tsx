@@ -12,6 +12,11 @@ import { transformBetData, getTimeRemaining, type BetStatus } from "@/lib/utils/
 import { useDisplayName } from "@/lib/hooks/useUsernameRegistry"
 import { useAcceptBet, useFundBet } from "@/lib/hooks/useBetActions"
 import { useUSDCApproval, useUSDCAllowance, useUSDCBalance } from "@/lib/hooks/useBetCreation"
+import { OutcomeDeclarationCard } from "@/components/bets/outcome-declaration-card"
+import { OutcomeWaitingCard } from "@/components/bets/outcome-waiting-card"
+import { DisputeResponseCard } from "@/components/bets/dispute-response-card"
+import { ClaimWinningsCard } from "@/components/bets/claim-winnings-card"
+import { DisputeStatusCard } from "@/components/bets/dispute-status-card"
 import { toast } from "sonner"
 
 export default function BetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -373,6 +378,118 @@ export default function BetDetailsPage({ params }: { params: Promise<{ id: strin
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {/* Resolution Cards - Show based on bet state */}
+            {/* 1. Outcome Declaration - Bet expired, still active, user is participant */}
+            {bet.status === "active" && timeRemaining.expired && (isCreator || isOpponent) && (
+              <OutcomeDeclarationCard
+                betAddress={betAddress}
+                isCreator={isCreator}
+                isOpponent={isOpponent}
+                expiresAt={bet.expiresAt}
+                onSuccess={refetch}
+              />
+            )}
+
+            {/* 2. Awaiting Resolution State - Show different cards based on who declared */}
+            {bet.status === "awaiting_resolution" && rawBetData && (
+              (() => {
+                // Get resolution data from raw bet data
+                const resolution = (rawBetData as any).resolution
+                const declaredWinner = resolution?.declaredWinner || ""
+                const disputeDeadline = Number(resolution?.disputeDeadline || 0)
+
+                // Determine who declared by checking who the declared winner is
+                // If outcome is CreatorWins (1), creator declared
+                // If outcome is OpponentWins (2), opponent declared
+                // If outcome is Draw (3), either could have declared
+                const outcomeNum = Number(bet.outcome) || 0
+                let declaredBy = ""
+
+                if (outcomeNum === 1) {
+                  // CreatorWins - creator declared
+                  declaredBy = bet.creator
+                } else if (outcomeNum === 2) {
+                  // OpponentWins - opponent declared
+                  declaredBy = bet.opponent
+                } else if (outcomeNum === 3 && declaredWinner) {
+                  // Draw - check declaredWinner field
+                  // For Draw, declaredWinner might be 0x0, so we need another way
+                  // For now, we'll use the declaredWinner from resolution
+                  declaredBy = declaredWinner === "0x0000000000000000000000000000000000000000"
+                    ? ""
+                    : declaredWinner
+                }
+
+                const isDeclarer = account?.address?.toLowerCase() === declaredBy.toLowerCase()
+
+                // Show waiting card to declarer
+                if (isDeclarer) {
+                  return (
+                    <OutcomeWaitingCard
+                      betAddress={betAddress}
+                      declaredOutcome={bet.outcome || ""}
+                      disputeDeadline={disputeDeadline}
+                      onSuccess={refetch}
+                    />
+                  )
+                }
+
+                // Show dispute response card to the other party
+                const shouldShowDispute = (isCreator || isOpponent) && !isDeclarer
+
+                if (!shouldShowDispute) return null
+
+                return (
+                  <DisputeResponseCard
+                    betAddress={betAddress}
+                    declaredOutcome={bet.outcome || ""}
+                    declaredBy={declaredBy}
+                    disputeDeadline={disputeDeadline}
+                    userAddress={account?.address}
+                    onSuccess={refetch}
+                  />
+                )
+              })()
+            )}
+
+            {/* 3. Dispute Status - Bet is in dispute */}
+            {bet.status === "in_dispute" && rawBetData && (
+              (() => {
+                const resolution = (rawBetData as any).resolution
+                const disputeReason = resolution?.disputeReason || "No reason provided"
+                const assignedJudge = resolution?.assignedJudge
+
+                return (
+                  <DisputeStatusCard
+                    disputeReason={disputeReason}
+                    assignedJudge={assignedJudge}
+                  />
+                )
+              })()
+            )}
+
+            {/* 4. Claim Winnings - Bet resolved, user is winner */}
+            {bet.status === "completed" && bet.outcome && (
+              (() => {
+                // Determine if current user won
+                const isWinner =
+                  (bet.outcome === "creator_wins" && isCreator) ||
+                  (bet.outcome === "opponent_wins" && isOpponent) ||
+                  (bet.outcome === "draw" && (isCreator || isOpponent))
+
+                if (!isWinner) return null
+
+                return (
+                  <ClaimWinningsCard
+                    betAddress={betAddress}
+                    stakeAmount={bet.stake}
+                    outcome={bet.outcome}
+                    onSuccess={refetch}
+                  />
+                )
+              })()
             )}
 
             {/* Bet Info Card */}
